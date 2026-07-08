@@ -32,8 +32,15 @@ export function SlugFieldInput(
   const [blurredName, setBlurredName] = useState(false);
   const [blurredSlug, setBlurredSlug] = useState(false);
 
+  // whether the slug still just mirrors the name (so typing in Name should
+  // keep regenerating it) — checked by value, not `props.value ===
+  // props.defaultValue`, since that reference-equality check only holds for
+  // a truly fresh entry; a value rebuilt from anywhere else (e.g. a restored
+  // draft) is never `===` the cached default even when the user never
+  // touched Slug, which permanently disabled auto-sync for that mount
   const [shouldGenerateSlug, setShouldGenerateSlug] = useState(
-    props.value === props.defaultValue
+    props.value.slug === '' ||
+      props.value.slug === props.naiveGenerateSlug(props.value.name)
   );
   const generateSlug = (name: string) => {
     const generated = props.naiveGenerateSlug(name);

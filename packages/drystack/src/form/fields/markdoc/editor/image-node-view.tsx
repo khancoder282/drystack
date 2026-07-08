@@ -216,6 +216,21 @@ export function ImageNodeView(props: {
     };
   }, [onDragEnd, onDragMove]);
 
+  // the lock toggle (in the image edit popover) only flips the attr — as
+  // soon as it flips on, resync height to the image's natural ratio at the
+  // *current* width, rather than waiting for the next resize to notice
+  const wasLockedRef = useRef(locked);
+  useEffect(() => {
+    const wasLocked = wasLockedRef.current;
+    wasLockedRef.current = locked;
+    if (wasLocked || !locked) return;
+    const ratio = naturalRatioRef.current;
+    const w = width ?? imgRef.current?.getBoundingClientRect().width;
+    if (ratio && w) {
+      commitAttrs({ height: Math.round(w / ratio) });
+    }
+  }, [locked, width, commitAttrs]);
+
   const displayWidth = dragSize?.width ?? width ?? renderedSize?.width;
   const displayHeight = dragSize?.height ?? height ?? renderedSize?.height;
 

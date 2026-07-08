@@ -652,11 +652,18 @@ function PopoverInner(props: {
       : props.decoration.to;
 
   const reference = useEditorReferenceElement(from, to);
+  const editorViewRef = useEditorViewRef();
 
   return (
     reference && (
       <EditorPopover
         adaptToBoundary={props.decoration.adaptToBoundary}
+        // constrain to the editor's own content area rather than the
+        // default `clippingAncestors` (which falls back to the viewport
+        // when no ancestor actually clips overflow) — otherwise, in a
+        // split-pane layout, shift() treats the sidebar next to the editor
+        // as free space and slides the popover under its buttons
+        boundary={editorViewRef.current?.dom}
         minWidth="element.medium"
         placement="bottom"
         portal={false}

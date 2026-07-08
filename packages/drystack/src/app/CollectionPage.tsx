@@ -333,7 +333,9 @@ function CollectionTable(
 
   const mainFiles = useData(
     useCallback(async () => {
-      if (!collection.columns?.length) return undefined;
+      if (!collection.columns || !Object.keys(collection.columns).length) {
+        return undefined;
+      }
       const formatInfo = getCollectionFormat(props.config, props.collection);
       const entries = await Promise.all(
         entriesWithStatus.map(async entry => {
@@ -462,20 +464,21 @@ function CollectionTable(
     sortDescriptor.direction,
   ]);
 
+  const columnKeys = useMemo(
+    () => (collection.columns ? Object.keys(collection.columns) : []),
+    [collection]
+  );
+
   const columns = useMemo(() => {
-    if (collection.columns?.length) {
+    if (columnKeys.length) {
       return [
         ...(hideStatusColumn
           ? []
           : [{ name: 'Status', key: STATUS, minWidth: 32, width: 32 }]),
-        {
-          name: 'Slug',
-          key: SLUG,
-        },
-        ...collection.columns.map(column => {
+        ...columnKeys.map(column => {
           const schema = collection.schema[column];
           return {
-            name: ('label' in schema && schema.label) || column,
+            name: (schema && 'label' in schema && schema.label) || column,
             key: column,
           };
         }),
@@ -487,7 +490,7 @@ function CollectionTable(
           { name: 'Status', key: STATUS, minWidth: 32, width: 32 },
           { name: 'Name', key: SLUG },
         ];
-  }, [collection, hideStatusColumn]);
+  }, [collection, columnKeys, hideStatusColumn]);
 
   return (
     <TableView
@@ -560,24 +563,28 @@ function CollectionTable(
               <Text weight="medium">{item.name as string}</Text>
             </Cell>
           );
-          if (collection.columns?.length) {
+          if (columnKeys.length) {
+            const row = item.data ?? {};
             return (
               <Row key={'key:' + item.name}>
                 {[
                   ...(hideStatusColumn ? [] : [statusCell]),
-                  nameCell,
-                  ...collection.columns.map(column => {
-                    let val;
-                    val = item.data?.[column];
-
-                    if (val == null) {
-                      val = undefined;
-                    } else {
-                      val = val + '';
-                    }
+                  ...columnKeys.map(column => {
+                    const val = row[column];
+                    const render = collection.columns![column]!;
+                    const rendered = render(val, row);
                     return (
-                      <Cell key={column + item.name} textValue={val}>
-                        <Text weight="medium">{val}</Text>
+                      <Cell
+                        key={column + item.name}
+                        textValue={val == null ? '' : val + ''}
+                      >
+                        <Text weight="medium">
+                          {typeof rendered === 'string' ? (
+                            <span dangerouslySetInnerHTML={{ __html: rendered }} />
+                          ) : (
+                            rendered
+                          )}
+                        </Text>
                       </Cell>
                     );
                   }),
