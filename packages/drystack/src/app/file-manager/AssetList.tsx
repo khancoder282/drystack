@@ -16,7 +16,7 @@ export function AssetList(props: {
     );
   }
   return (
-    <Flex direction="column" gap="small">
+    <Flex direction="column" gap="medium">
       {props.items.map(({ key, ...item }) => (
         <AssetListItem key={key} {...item} />
       ))}

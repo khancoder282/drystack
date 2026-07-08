@@ -524,10 +524,17 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
             crumbs={[{ key: "entries", label: "Entries" }]}
             onNavigate={() => {}}
           />
-          <AssetGrid
-            items={items}
-            emptyMessage="No collections or singletons configured."
-          />
+          {viewMode === 'grid' ? (
+            <AssetGrid
+              items={items}
+              emptyMessage="No collections or singletons configured."
+            />
+          ) : (
+            <AssetList
+              items={items as AssetListItemData[]}
+              emptyMessage="No collections or singletons configured."
+            />
+          )}
         </Flex>
       );
     }
@@ -547,7 +554,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
         onOpen: () =>
           setEntriesNav({
             step: "dir",
-            rootDir: `${getCollectionItemPath(config, entriesNav.key, entry.slug)}/assets`,
+            rootDir: `${getCollectionItemPath(config, entriesNav.key, entry.slug)}`,
             subPath: "",
             label: entry.slug,
             parent: {
@@ -568,7 +575,11 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
               if (key === "root") setEntriesNav({ step: "root" });
             }}
           />
-          <AssetGrid items={items} emptyMessage="No entries yet." />
+          {viewMode === 'grid' ? (
+            <AssetGrid items={items} emptyMessage="No entries yet." />
+          ) : (
+            <AssetList items={items as AssetListItemData[]} emptyMessage="No entries yet." />
+          )}
         </Flex>
       );
     }

@@ -16,7 +16,7 @@ export function AssetGrid(props: {
     );
   }
   return (
-    <Flex wrap gap="regular">
+    <Flex wrap gap="medium">
       {props.items.map(({ key, ...item }) => (
         <AssetCard key={key} {...item} />
       ))}

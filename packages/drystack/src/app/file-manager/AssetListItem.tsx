@@ -42,7 +42,6 @@ export type AssetListItemProps = {
 };
 
 export function AssetListItem(props: AssetListItemProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const previewUrl = useMediaLibraryPreviewURL(
     props.kind === "file" && props.isImage && props.path ? props.path : null,
   );
@@ -65,8 +64,6 @@ export function AssetListItem(props: AssetListItemProps) {
       backgroundColor="canvas"
       border="neutral"
       borderRadius="regular"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       UNSAFE_style={{
         opacity: props.disabled ? 0.45 : undefined,
         cursor: !props.disabled ? "pointer" : undefined,
