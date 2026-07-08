@@ -24,6 +24,7 @@ import { AppShell } from './shell';
 import { PageBody, PageRoot } from './shell/page';
 import { EmptyState } from './shell/empty-state';
 import { SingletonPage } from './SingletonPage';
+import { FileManagerPage } from './file-manager/FileManagerPage';
 import { CreatedGitHubApp } from './onboarding/created-github-app';
 import { KeystaticSetup } from './onboarding/setup';
 import { RepoNotFound } from './onboarding/repo-not-found';
@@ -48,6 +49,9 @@ import { NotFoundBoundary, notFound } from './not-found';
 function parseParamsWithoutBranch(params: string[]) {
   if (params.length === 0) {
     return {};
+  }
+  if (params.length === 1 && params[0] === 'files') {
+    return { page: 'files' as const };
   }
   if (params.length === 2 && params[0] === 'singleton') {
     return { singleton: params[1] };
@@ -194,6 +198,8 @@ function PageInner({ config }: { config: Config }) {
             config={config as unknown as Config}
             singleton={parsedParams.singleton}
           />
+        ) : parsedParams.page === 'files' ? (
+          <FileManagerPage />
         ) : (
           <DashboardPage
             config={config as unknown as Config}

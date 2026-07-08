@@ -18,7 +18,7 @@ import {
 import { SidebarProvider } from './sidebar';
 import { MainPanelLayout } from './panels';
 import { EmptyState } from './empty-state';
-import { MediaLibraryHost } from '../media-library/MediaLibraryDialog';
+import { FileManagerHost } from '../file-manager/FileManagerHost';
 
 function BranchNotFound(props: { children: ReactNode }) {
   const branches = useBranches();
@@ -72,7 +72,7 @@ export const AppShell = (props: {
           <MainPanelLayout>
             <BranchNotFound>{content}</BranchNotFound>
           </MainPanelLayout>
-          <MediaLibraryHost />
+          <FileManagerHost />
         </SidebarProvider>
       </AppStateContext.Provider>
     </ConfigContext.Provider>

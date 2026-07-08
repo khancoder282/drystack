@@ -10,9 +10,6 @@ import {
 
 import { ToggleButton } from '@keystar/ui/button';
 import { Icon } from '@keystar/ui/icon';
-import { alignCenterIcon } from '@keystar/ui/icon/icons/alignCenterIcon';
-import { alignLeftIcon } from '@keystar/ui/icon/icons/alignLeftIcon';
-import { alignRightIcon } from '@keystar/ui/icon/icons/alignRightIcon';
 import { link2Icon } from '@keystar/ui/icon/icons/link2Icon';
 import { link2OffIcon } from '@keystar/ui/icon/icons/link2OffIcon';
 import { Flex } from '@keystar/ui/layout';
@@ -253,10 +250,6 @@ export function ImageNodeView(props: {
     });
   };
 
-  const toggleAlign = (value: ImageAlign) => {
-    commitAttrs({ align: (align === value ? null : value) as any });
-  };
-
   const displayWidth = dragSize?.width ?? width ?? renderedSize?.width;
   const displayHeight = dragSize?.height ?? height ?? renderedSize?.height;
 
@@ -276,6 +269,11 @@ export function ImageNodeView(props: {
   const wrapperStyle: CSSProperties = {
     position: 'relative',
     display: align === 'center' ? 'block' : 'inline-block',
+    // a block-level, non-replaced <span> would otherwise stretch to fill the
+    // paragraph's full width — shrink it back to the image's own size so the
+    // outline (and the `margin-inline: auto` centering) apply to the image,
+    // not an invisible full-width box around it
+    width: align === 'center' ? 'fit-content' : undefined,
     lineHeight: 0,
     ...wrapperAlignStyle(align),
   };
@@ -329,27 +327,16 @@ export function ImageNodeView(props: {
             <Flex gap="regular" alignItems="center">
               <NumberField
                 aria-label="Width (px)"
-                width="scale.1000"
+                width="scale.1700"
                 minValue={MIN_SIZE}
                 step={1}
                 hideStepper
                 value={displayWidth ?? undefined}
                 onChange={onWidthField}
               />
-              <TooltipTrigger>
-                <ToggleButton
-                  prominence="low"
-                  isSelected={locked}
-                  aria-label="Lock aspect ratio"
-                  onPress={() => setLocked(v => !v)}
-                >
-                  <Icon src={locked ? link2Icon : link2OffIcon} />
-                </ToggleButton>
-                <Tooltip>Lock aspect ratio</Tooltip>
-              </TooltipTrigger>
               <NumberField
                 aria-label="Height (px)"
-                width="scale.1000"
+                width="scale.1700"
                 minValue={MIN_SIZE}
                 step={1}
                 hideStepper
@@ -359,35 +346,28 @@ export function ImageNodeView(props: {
               <TooltipTrigger>
                 <ToggleButton
                   prominence="low"
-                  isSelected={align === 'left'}
-                  aria-label="Float left"
-                  onPress={() => toggleAlign('left')}
+                  isSelected={locked}
+                  aria-label="Lock aspect ratio"
+                  onPress={() => {
+                    setLocked(wasLocked => {
+                      const turningOn = !wasLocked;
+                      // syncing height to width immediately (rather than
+                      // waiting for the next resize) so the lock doesn't
+                      // silently leave a mismatched aspect ratio in place
+                      const w = displayWidth;
+                      if (turningOn && w != null) {
+                        commitAttrs({
+                          width: Math.round(w),
+                          height: Math.round(w / ratioForField()),
+                        });
+                      }
+                      return turningOn;
+                    });
+                  }}
                 >
-                  <Icon src={alignLeftIcon} />
+                  <Icon src={locked ? link2Icon : link2OffIcon} />
                 </ToggleButton>
-                <Tooltip>Float left</Tooltip>
-              </TooltipTrigger>
-              <TooltipTrigger>
-                <ToggleButton
-                  prominence="low"
-                  isSelected={align === 'center'}
-                  aria-label="Center"
-                  onPress={() => toggleAlign('center')}
-                >
-                  <Icon src={alignCenterIcon} />
-                </ToggleButton>
-                <Tooltip>Center</Tooltip>
-              </TooltipTrigger>
-              <TooltipTrigger>
-                <ToggleButton
-                  prominence="low"
-                  isSelected={align === 'right'}
-                  aria-label="Float right"
-                  onPress={() => toggleAlign('right')}
-                >
-                  <Icon src={alignRightIcon} />
-                </ToggleButton>
-                <Tooltip>Float right</Tooltip>
+                <Tooltip>Lock aspect ratio</Tooltip>
               </TooltipTrigger>
             </Flex>
           </div>
@@ -398,7 +378,10 @@ export function ImageNodeView(props: {
 }
 
 const wrapperClass = css({
-  '&[data-selected="true"] img': {
+  // outlining the wrapper itself (rather than the nested `img`) so a
+  // block-level, centered wrapper is outlined as one block, matching how the
+  // browser actually lays it out
+  '&[data-selected="true"]': {
     outline: `2px solid ${tokenSchema.color.alias.borderSelected}`,
     outlineOffset: 2,
   },
@@ -408,10 +391,9 @@ const handleClass = css({
   position: 'absolute',
   width: 10,
   height: 10,
-  marginLeft: -5,
-  marginTop: -5,
+  transform: 'translate(-50%, -50%)',
   boxSizing: 'border-box',
-  borderRadius: 2,
+  borderRadius: '50%',
   backgroundColor: tokenSchema.color.background.canvas,
   border: `2px solid ${tokenSchema.color.alias.borderSelected}`,
   zIndex: 1,

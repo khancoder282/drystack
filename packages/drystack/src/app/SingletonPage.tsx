@@ -39,7 +39,11 @@ import { parseEntry, useItemData } from './useItemData';
 import { serializeEntryToFiles, useUpsertItem } from './updating';
 import { Icon } from '@keystar/ui/icon';
 import { ForkRepoDialog } from './fork-repo';
-import { FormForEntry, containerWidthForEntryLayout } from './entry-form';
+import {
+  EntryDirectoryProvider,
+  FormForEntry,
+  containerWidthForEntryLayout,
+} from './entry-form';
 import { notFound } from './not-found';
 import { delDraft, getDraft, setDraft } from './persistence';
 import * as s from 'superstruct';
@@ -288,13 +292,15 @@ function SingletonPageInner(
         {props.updateResult.kind === 'error' && (
           <Notice tone="critical">{props.updateResult.error.message}</Notice>
         )}
-        <FormForEntry
-          previewProps={props.previewProps as any}
-          forceValidation={forceValidation}
-          entryLayout={singletonConfig.entryLayout}
-          formatInfo={formatInfo}
-          slugField={undefined}
-        />
+        <EntryDirectoryProvider value={singletonPath}>
+          <FormForEntry
+            previewProps={props.previewProps as any}
+            forceValidation={forceValidation}
+            entryLayout={singletonConfig.entryLayout}
+            formatInfo={formatInfo}
+            slugField={undefined}
+          />
+        </EntryDirectoryProvider>
         <DialogContainer
           // ideally this would be a popover on desktop but using a DialogTrigger wouldn't work since
           // this doesn't open on click but after doing a network request and it failing and manually wiring about a popover and modal would be a pain

@@ -21,10 +21,14 @@ export type MediaLibraryPick = {
 // (see resolveMediaLibraryBytes); byteLength (not identity) is what's checked
 export const UNHYDRATED_MEDIA_BYTES = new Uint8Array(0);
 
-type Opener = (options?: {
+type OpenOptions = {
   accept?: 'image' | 'any';
   local?: MediaLibraryLocalScope;
-}) => Promise<MediaLibraryPick | undefined>;
+};
+
+type Opener = (
+  options: OpenOptions & { selection: 'single' | 'multi' }
+) => Promise<MediaLibraryPick[] | undefined>;
 
 let currentOpener: Opener | null = null;
 
@@ -32,16 +36,31 @@ export function registerMediaLibraryOpener(opener: Opener | null) {
   currentOpener = opener;
 }
 
-export function openMediaLibrary(options?: {
-  accept?: 'image' | 'any';
-  local?: MediaLibraryLocalScope;
-}): Promise<MediaLibraryPick | undefined> {
+export function openMediaLibrary(
+  options?: OpenOptions
+): Promise<MediaLibraryPick | undefined> {
   if (!currentOpener) {
     // eslint-disable-next-line no-console
     console.warn('Media library is not available yet');
     return Promise.resolve(undefined);
   }
-  return currentOpener(options);
+  return currentOpener({ ...options, selection: 'single' }).then(
+    picks => picks?.[0]
+  );
+}
+
+// multi-select variant used by `fields.images`/`fields.files` and the File
+// Management page — resolves every file picked/uploaded in one dialog
+// session, instead of just the first
+export function openMediaLibraryMulti(
+  options?: OpenOptions
+): Promise<MediaLibraryPick[] | undefined> {
+  if (!currentOpener) {
+    // eslint-disable-next-line no-console
+    console.warn('Media library is not available yet');
+    return Promise.resolve(undefined);
+  }
+  return currentOpener({ ...options, selection: 'multi' });
 }
 
 // lets code outside the editor (drag & drop, paste) durably persist bytes to

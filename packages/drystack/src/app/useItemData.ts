@@ -153,8 +153,12 @@ export function parseEntry(
           const rootPath = `${args.dirpath}/${pathWithArrayFieldSlugs.join(
             '/'
           )}`;
+          // embedded assets (images, etc.) live in a directory shared by every
+          // field in this entry, not split per field path — see the "This
+          // entry" media scope in markdoc/ui.tsx and the matching write path
+          // in serialize-props.ts
           const { external, other } = getFilesForAssetsOrContentField(
-            rootPath,
+            `${args.dirpath}/assets`,
             schema
           );
 

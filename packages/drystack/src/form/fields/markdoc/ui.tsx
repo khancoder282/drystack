@@ -1,4 +1,3 @@
-import { useContext } from 'react';
 import { Field, FieldProps } from '@keystar/ui/field';
 import { FormFieldInputProps } from '../../api';
 import { EditorState } from 'prosemirror-state';
@@ -12,7 +11,6 @@ import {
   useEntryDirectoryContext,
   useEntryLayoutSplitPaneContext,
 } from '../../../app/entry-form';
-import { PathContext } from '../text/path-slug-context';
 import { MediaScopeProvider } from './editor/media-scope';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
@@ -135,7 +133,6 @@ export function DocumentFieldInput(
 ) {
   let entryLayoutPane = useEntryLayoutSplitPaneContext();
   let entryDirectory = useEntryDirectoryContext();
-  let fieldPath = useContext(PathContext);
 
   let fieldProps: FieldProps = {
     label: props.label,
@@ -154,7 +151,7 @@ export function DocumentFieldInput(
       value={
         entryDirectory
           ? {
-              directory: [entryDirectory, ...fieldPath].join('/'),
+              directory: `${entryDirectory}/assets`,
               label: 'This entry',
             }
           : null

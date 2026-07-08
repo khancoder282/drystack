@@ -216,7 +216,10 @@ async function update(
     );
   }
   for (const deletion of updates.deletions) {
-    await fs.rm(path.join(baseDirectory, deletion.path), { force: true });
+    await fs.rm(path.join(baseDirectory, deletion.path), {
+      force: true,
+      recursive: true,
+    });
   }
   return {
     status: 200,

@@ -15,15 +15,20 @@ import { FormValueContentFromPreviewProps } from '../../../../form-from-preview'
 import { createGetPreviewProps } from '../../../../preview-props';
 import l10nMessages from '../../../../../app/l10n';
 import { Icon } from '@keystar/ui/icon';
+import { alignCenterIcon } from '@keystar/ui/icon/icons/alignCenterIcon';
+import { alignLeftIcon } from '@keystar/ui/icon/icons/alignLeftIcon';
+import { alignRightIcon } from '@keystar/ui/icon/icons/alignRightIcon';
 import { editIcon } from '@keystar/ui/icon/icons/editIcon';
 import { fileUpIcon } from '@keystar/ui/icon/icons/fileUpIcon';
 import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { TooltipTrigger, Tooltip } from '@keystar/ui/tooltip';
+import { ToggleButton } from '@keystar/ui/button';
 import { openMediaLibrary } from '../../../../../app/media-library/bridge';
 import { EditorState, NodeSelection } from 'prosemirror-state';
 import { useEditorDispatchCommand, useEditorSchema } from '../editor-view';
 import { Node } from 'prosemirror-model';
 import { imageAttrsForPick } from '../image-pick';
+import { ImageAlign } from '../image-layout';
 import { useMediaScope } from '../media-scope';
 
 export function ImagePopover(props: {
@@ -36,9 +41,60 @@ export function ImagePopover(props: {
   const schema = useEditorSchema();
   const mediaScope = useMediaScope();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const align: ImageAlign | null = props.node.attrs.align;
+  const toggleAlign = (value: ImageAlign) => {
+    runCommand((state, dispatch) => {
+      if (dispatch) {
+        dispatch(
+          state.tr.setNodeAttribute(
+            props.pos,
+            'align',
+            align === value ? null : value
+          )
+        );
+      }
+      return true;
+    });
+  };
   return (
     <>
       <Flex gap="regular" padding="regular">
+        <Flex gap="small">
+          <TooltipTrigger>
+            <ToggleButton
+              prominence="low"
+              isSelected={align === 'left'}
+              aria-label="Float left"
+              onPress={() => toggleAlign('left')}
+            >
+              <Icon src={alignLeftIcon} />
+            </ToggleButton>
+            <Tooltip>Float left</Tooltip>
+          </TooltipTrigger>
+          <TooltipTrigger>
+            <ToggleButton
+              prominence="low"
+              isSelected={align === 'center'}
+              aria-label="Center"
+              onPress={() => toggleAlign('center')}
+            >
+              <Icon src={alignCenterIcon} />
+            </ToggleButton>
+            <Tooltip>Center</Tooltip>
+          </TooltipTrigger>
+          <TooltipTrigger>
+            <ToggleButton
+              prominence="low"
+              isSelected={align === 'right'}
+              aria-label="Float right"
+              onPress={() => toggleAlign('right')}
+            >
+              <Icon src={alignRightIcon} />
+            </ToggleButton>
+            <Tooltip>Float right</Tooltip>
+          </TooltipTrigger>
+        </Flex>
+        <Divider orientation="vertical" />
         <Flex gap="small">
           <TooltipTrigger>
             <ActionButton prominence="low" onPress={() => setDialogOpen(true)}>

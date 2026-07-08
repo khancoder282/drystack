@@ -62,8 +62,7 @@ export function serializeProps(
 
           for (const [key, contents] of other) {
             extraFiles.push({
-              path:
-                getPropPathPortion(propPath, rootSchema, rootValue) + '/' + key,
+              path: `assets/${key}`,
               contents,
               parent: undefined,
             });

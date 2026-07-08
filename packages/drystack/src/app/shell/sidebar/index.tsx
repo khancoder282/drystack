@@ -236,6 +236,7 @@ export function SidebarDialog() {
 
 export function SidebarNav() {
   const { basePath } = useAppState();
+  const config = useConfig();
   const stringFormatter = useLocalizedStringFormatter(l10nMessages);
   const navItems = useNavItems();
   const isCurrent = useIsCurrent();
@@ -249,6 +250,18 @@ export function SidebarNav() {
         >
           {stringFormatter.format('dashboard')}
         </NavItem>
+
+        {/* the File Manager's own trash/upload actions only work against the
+        local-mode `/update` API, so keep it out of the nav for other storage
+        kinds rather than showing a page that can't do anything */}
+        {isLocalConfig(config) && (
+          <NavItem
+            href={`${basePath}/files`}
+            aria-current={isCurrent(`${basePath}/files`)}
+          >
+            File management
+          </NavItem>
+        )}
 
         {navItems.map((item, i) => (
           <NavItemOrGroup key={i} itemOrGroup={item} />

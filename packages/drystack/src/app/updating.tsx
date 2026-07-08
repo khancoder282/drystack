@@ -14,7 +14,9 @@ import {
   useRepoInfo,
   useSetTreeSha,
 } from './shell/data';
-import { hydrateBlobCache } from './useItemData';
+import { fetchBlob, hydrateBlobCache } from './useItemData';
+import { useConfig } from './shell/context';
+import { trashedPathFor } from './file-manager/useTrash';
 import { FormatInfo, getEntryDataFilepath, getPathPrefix } from './path-utils';
 import {
   getTreeNodeAtPath,
@@ -384,6 +386,7 @@ export function useDeleteItem(args: {
   const appSlug = useContext(AppSlugContext);
   const unscopedTreeData = useCurrentUnscopedTree();
   const { basePath: rootPath } = useRouter();
+  const config = useConfig();
 
   return [
     state,
@@ -404,9 +407,27 @@ export function useDeleteItem(args: {
           return false;
         }
         setState({ kind: 'loading' });
-        const deletions = args.initialFiles.map(
-          x => (getPathPrefix(args.storage) ?? '') + x
-        );
+        const prefix = getPathPrefix(args.storage) ?? '';
+        // everything the schema knows about, plus every other file that
+        // happens to live under this entry's own directory (e.g. orphaned
+        // local-media uploads the schema never referenced) — deleting an
+        // entry should take its whole folder with it
+        const entryDirPrefix = `${prefix}${args.basePath}/`;
+        const cascadeDeletions =
+          unscopedTreeData.kind === 'loaded'
+            ? [...unscopedTreeData.data.entries.values()]
+                .filter(
+                  entry =>
+                    entry.type === 'blob' && entry.path.startsWith(entryDirPrefix)
+                )
+                .map(entry => entry.path)
+            : [];
+        const deletions = [
+          ...new Set([
+            ...args.initialFiles.map(x => prefix + x),
+            ...cascadeDeletions,
+          ]),
+        ];
         const updatedTree = await updateTreeWithChanges(unscopedTree, {
           additions: [],
           deletions,
@@ -447,6 +468,30 @@ export function useDeleteItem(args: {
           setState({ kind: 'updated' });
           return true;
         } else {
+          // local storage: move the whole entry into the trash instead of
+          // deleting it outright, so it can be restored from the File
+          // Manager — emulated as one request that both rewrites the bytes
+          // at their `.deleted/...` path and removes the originals
+          const additions = (
+            await Promise.all(
+              deletions.map(async path => {
+                const sha = getTreeNodeAtPath(unscopedTree, path)?.entry.sha;
+                if (!sha) return null;
+                const contents = await fetchBlob(
+                  config,
+                  sha,
+                  path,
+                  baseCommit,
+                  repoInfo,
+                  rootPath
+                );
+                return {
+                  path: trashedPathFor(path),
+                  contents: base64Encode(contents),
+                };
+              })
+            )
+          ).filter((x): x is NonNullable<typeof x> => x !== null);
           const res = await fetch(`/api${rootPath}/update`, {
             method: 'POST',
             headers: {
@@ -454,7 +499,7 @@ export function useDeleteItem(args: {
               'no-cors': '1',
             },
             body: JSON.stringify({
-              additions: [],
+              additions,
               deletions: deletions.map(path => ({ path })),
             }),
           });

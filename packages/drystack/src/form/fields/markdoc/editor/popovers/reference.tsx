@@ -36,7 +36,26 @@ export function useEditorReferenceElement(
       setReferenceElement(null);
       return;
     }
-    setReferenceElement(getReferenceElementForRange(view, from, to));
+    const update = () =>
+      setReferenceElement(getReferenceElementForRange(view, from, to));
+    update();
+
+    // the referenced node's box can change size without any scroll/resize
+    // event floating-ui's own autoUpdate would catch — e.g. dragging an
+    // image's resize handles just mutates its inline style. Watch the node's
+    // DOM directly and hand floating-ui a fresh virtual element (new object
+    // identity) whenever that happens, so the popover keeps tracking it
+    // instead of lagging behind mid-drag.
+    const nodeAtFrom = view.state.doc.nodeAt(from);
+    const dom =
+      nodeAtFrom !== null && to === from + nodeAtFrom.nodeSize
+        ? view.nodeDOM(from)
+        : null;
+    if (dom instanceof Element) {
+      const observer = new ResizeObserver(update);
+      observer.observe(dom);
+      return () => observer.disconnect();
+    }
   }, [getEditorView, from, to]);
   return referenceElement;
 }

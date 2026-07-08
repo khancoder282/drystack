@@ -103,7 +103,6 @@ export function FormForEntry({
     for (const [key, child] of Object.entries(props.fields)) {
       if (isContentEditorField(child.schema)) {
         contentPanePath = [key];
-        break;
       }
     }
   }
