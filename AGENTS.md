@@ -1,3 +1,11 @@
+## Configuration
+
+The Keystatic-based CMS config file is `drystack.config.ts` at the project root (this fork renames it from upstream's `keystatic.config.ts`). The Astro integration (`packages/astro/src/index.ts`) resolves the `virtual:keystatic-config` module to this filename and lists it in Vite's `optimizeDeps.entries` — if renamed again, update both spots plus any direct imports (e.g. `src/pages/index.astro`).
+
+## Media library
+
+Uploads via `openMediaLibrary()` / `useMediaLibraryUpload` (`packages/drystack/src/app/media-library/`) write files to disk immediately but intentionally do **not** update the global tree state — see the comment in `useMediaLibraryUpload.ts`. This avoids resetting unsaved form edits, but it means tree-based lookups (`useMediaLibraryPreviewURL`, which resolves a blob sha from the tree) can't find a just-uploaded file until the tree naturally refreshes (e.g. after Save). Any UI that needs to preview a freshly picked/uploaded file should cache the bytes returned in `MediaLibraryPick.content` locally instead of relying solely on the tree lookup.
+
 ## Development
 
 When starting the dev server, use background mode:
