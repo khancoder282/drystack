@@ -12,11 +12,17 @@ export function getDefaultValue(schema: EditorSchema) {
   return createEditorState(schema.nodes.doc.createAndFill()!);
 }
 
-export function parseToEditorStateHTML(content: string, schema: EditorSchema) {
-  const doc = htmlToProseMirror(content, schema);
+export function parseToEditorStateHTML(
+  content: string,
+  schema: EditorSchema,
+  other: ReadonlyMap<string, Uint8Array>
+) {
+  const doc = htmlToProseMirror(content, schema, other);
   return createEditorState(doc);
 }
 
 export function serializeFromEditorStateHTML(value: EditorState) {
-  return serializeFromEditorStateToHTML(value.doc);
+  const other = new Map<string, Uint8Array>();
+  const html = serializeFromEditorStateToHTML(value.doc, other);
+  return { value: html, other };
 }

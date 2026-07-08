@@ -1,4 +1,4 @@
-import { BasicFormField } from '../../api';
+import { AssetsFormField } from '../../api';
 import { FieldDataError } from '../error';
 import {
   DocumentFieldInput,
@@ -35,6 +35,7 @@ export function content({
   };
   return {
     kind: 'form',
+    formKind: 'assets',
     defaultValue() {
       return getDefaultValue(getSchema());
     },
@@ -47,18 +48,19 @@ export function content({
         />
       );
     },
-    parse(value) {
+    parse(value, { other }) {
       if (value === undefined) return getDefaultValue(getSchema());
       if (typeof value !== 'string') {
         throw new FieldDataError('Must be a string');
       }
-      return parseToEditorStateHTML(value, getSchema());
+      return parseToEditorStateHTML(value, getSchema(), other);
     },
     validate(value) {
       return value;
     },
     serialize(value) {
-      return { value: serializeFromEditorStateHTML(value) };
+      const out = serializeFromEditorStateHTML(value);
+      return { value: out.value, other: out.other, external: new Map() };
     },
     reader: {
       parse(value) {
@@ -70,5 +72,5 @@ export function content({
 }
 
 export declare namespace content {
-  type Field = BasicFormField<EditorState, EditorState, string>;
+  type Field = AssetsFormField<EditorState, EditorState, string>;
 }

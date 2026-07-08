@@ -4,11 +4,12 @@ import { MEDIA_LIBRARY_DIRECTORY } from '../../../../../app/media-library/consta
 
 type ParseState = {
   schema: EditorSchema;
+  other: ReadonlyMap<string, Uint8Array>;
 };
 
-// images are stored by reference (a path into the media library directory),
-// not embedded bytes, so parsing HTML alone can't produce real image bytes.
-// the shared `image` node view resolves the real bytes lazily via
+// legacy images (saved before per-entry image storage existed) are stored by
+// reference (a path into the shared media library directory), not embedded
+// bytes. the shared `image` node view resolves the real bytes lazily via
 // `resolveMediaLibraryBytes` (see schema.tsx) when it notices this sentinel.
 const UNHYDRATED_IMAGE_BYTES = new Uint8Array(0);
 
@@ -55,13 +56,20 @@ function inlineNodeToProseMirror(
     if (!schema.nodes.image) return [];
     const src = el.getAttribute('src') ?? '';
     const prefix = `/${MEDIA_LIBRARY_DIRECTORY}/`;
+    const isLegacyLibraryReference = src.startsWith(prefix);
     const filename = decodeURIComponent(
-      src.startsWith(prefix) ? src.slice(prefix.length) : src
+      isLegacyLibraryReference ? src.slice(prefix.length) : src
     );
     if (!filename) return [];
+    // legacy images keep resolving lazily via `resolveMediaLibraryBytes`
+    // (see schema.tsx); new images are resolved synchronously here from
+    // this entry's own sibling files
+    const content = isLegacyLibraryReference
+      ? UNHYDRATED_IMAGE_BYTES
+      : (state.other.get(filename) ?? UNHYDRATED_IMAGE_BYTES);
     return [
       schema.nodes.image.createChecked({
-        src: UNHYDRATED_IMAGE_BYTES,
+        src: content,
         filename,
         alt: el.getAttribute('alt') ?? '',
         title: el.getAttribute('title') ?? '',
@@ -253,9 +261,10 @@ function listItems(el: Element, state: ParseState): ProseMirrorNode[] {
 
 export function htmlToProseMirror(
   html: string,
-  schema: EditorSchema
+  schema: EditorSchema,
+  other: ReadonlyMap<string, Uint8Array>
 ): ProseMirrorNode {
-  const state: ParseState = { schema };
+  const state: ParseState = { schema, other };
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const children = blocksFromChildNodes(
     Array.from(doc.body.childNodes),

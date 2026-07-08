@@ -41,7 +41,25 @@ function renderNode(node: HtmlNode): string {
 
 type SerializationState = {
   schema: EditorSchema;
+  other: Map<string, Uint8Array>;
 };
+
+function uniqueFilename(
+  existing: ReadonlyMap<string, Uint8Array>,
+  filename: string
+): string {
+  if (!existing.has(filename)) return filename;
+  const dotIndex = filename.lastIndexOf('.');
+  const base = dotIndex === -1 ? filename : filename.slice(0, dotIndex);
+  const extension = dotIndex === -1 ? '' : filename.slice(dotIndex);
+  let i = 1;
+  let candidate = `${base}-${i}${extension}`;
+  while (existing.has(candidate)) {
+    i++;
+    candidate = `${base}-${i}${extension}`;
+  }
+  return candidate;
+}
 
 function _blocks(fragment: Fragment, state: SerializationState): HtmlNode[] {
   const children: HtmlNode[] = [];
@@ -69,17 +87,34 @@ function getLeafContent(
     return { kind: 'element', tag: 'br', children: [] };
   }
   if (node.type === schema.nodes.image) {
-    // images are already durably written to the media library directory by
-    // the time they're inserted (via the dialog or the eager upload path for
-    // drag & drop / paste), so serializing only needs to emit the reference
-    const { filename } = node.attrs;
+    const { filename, alt, title } = node.attrs;
+    if (node.attrs.src.byteLength > 0) {
+      // has real bytes in-memory (freshly inserted, or an existing node the
+      // user edited this session) — embed them as a sibling file scoped to
+      // this entry instead of the shared media library directory
+      const key = uniqueFilename(state.other, filename);
+      state.other.set(key, node.attrs.src);
+      return {
+        kind: 'element',
+        tag: 'img',
+        attrs: {
+          src: key,
+          alt: alt ?? '',
+          ...(title ? { title } : {}),
+        },
+        children: [],
+      };
+    }
+    // loaded from stored HTML with no embedded bytes and untouched this
+    // session — keep pointing at the shared media library directory so
+    // pre-existing content keeps working without a migration
     return {
       kind: 'element',
       tag: 'img',
       attrs: {
         src: `/${MEDIA_LIBRARY_DIRECTORY}/${filename}`,
-        alt: node.attrs.alt ?? '',
-        ...(node.attrs.title ? { title: node.attrs.title } : {}),
+        alt: alt ?? '',
+        ...(title ? { title } : {}),
       },
       children: [],
     };
@@ -218,7 +253,13 @@ function proseMirrorToHtmlNode(
   throw new Error(`Unhandled node type: ${node.type.name}`);
 }
 
-export function serializeFromEditorStateToHTML(node: ProseMirrorNode): string {
-  const state: SerializationState = { schema: getEditorSchema(node.type.schema) };
+export function serializeFromEditorStateToHTML(
+  node: ProseMirrorNode,
+  other: Map<string, Uint8Array>
+): string {
+  const state: SerializationState = {
+    schema: getEditorSchema(node.type.schema),
+    other,
+  };
   return renderNode(proseMirrorToHtmlNode(node, state));
 }

@@ -7,10 +7,7 @@ import { imageIcon } from '@keystar/ui/icon/icons/imageIcon';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Text } from '@keystar/ui/typography';
 
-import {
-  openMediaLibrary,
-  uploadToMediaLibrary,
-} from '../../../../app/media-library/bridge';
+import { openMediaLibrary } from '../../../../app/media-library/bridge';
 import { EditorSchema, getEditorSchema } from './schema';
 import { ToolbarButton } from './Toolbar';
 import { EditorConfig } from '../config';
@@ -80,16 +77,8 @@ export function imageDropPlugin(schema: EditorSchema) {
             (async () => {
               const content = new Uint8Array(await file.arrayBuffer());
               const filename = transformFilename(file.name);
-              // durably persist to the media library directory immediately,
-              // the same way picking a file in the dialog does
-              const uploaded = await uploadToMediaLibrary(content, filename);
               const slice = Slice.maxOpen(
-                Fragment.from(
-                  imageType.createChecked({
-                    src: content,
-                    filename: uploaded?.filename ?? filename,
-                  })
-                )
+                Fragment.from(imageType.createChecked({ src: content, filename }))
               );
               const pos = dropPoint(view.state.doc, $mouse.pos, slice);
               if (pos === null) return false;
@@ -131,13 +120,9 @@ export function imageDropPlugin(schema: EditorSchema) {
             (async () => {
               const content = new Uint8Array(await file.arrayBuffer());
               const filename = transformFilename(file.name);
-              const uploaded = await uploadToMediaLibrary(content, filename);
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
-                  imageType.createChecked({
-                    src: content,
-                    filename: uploaded?.filename ?? filename,
-                  })
+                  imageType.createChecked({ src: content, filename })
                 )
               );
             })();
