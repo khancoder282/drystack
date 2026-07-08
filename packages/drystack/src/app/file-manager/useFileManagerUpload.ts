@@ -43,6 +43,7 @@ export function useFileManagerUpload() {
 
   const commit = useCallback(
     async (files: PendingUpload[]) => {
+      const uploaded: { path: string; content: Uint8Array }[] = [];
       const additions = files
         .map(f => {
           const resolution = f.conflict
@@ -51,6 +52,7 @@ export function useFileManagerUpload() {
           if (resolution === 'skip') return null;
           const path =
             resolution === 'rename' ? renamedWithSuffix(f.targetPath) : f.targetPath;
+          uploaded.push({ path, content: f.content });
           return { path, contents: base64Encode(f.content) };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -65,7 +67,8 @@ export function useFileManagerUpload() {
         });
         if (!res.ok) throw new Error(await res.text());
         const newTree = await res.json();
-        return await hydrateTreeCacheWithEntries(newTree);
+        const tree = await hydrateTreeCacheWithEntries(newTree);
+        return { ...tree, uploaded };
       } finally {
         setIsUploading(false);
         resolutionsRef.current = new Map();

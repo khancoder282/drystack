@@ -24,8 +24,13 @@ export function FileManagerDialog(props: {
             accept: props.accept ?? 'any',
             selection: props.selection,
             local: props.local,
+            // `dismiss()` calls the same `onDismiss` the DialogContainer
+            // resolves the pending pick with `undefined` from — calling it
+            // here would race with (and always beat) `props.onPick` below,
+            // since a promise's first resolution wins. Closing happens as a
+            // side effect of `props.onPick` once the caller clears its
+            // pending request, so don't dismiss separately.
             onPick: picks => {
-              dismiss();
               props.onPick(picks);
             },
           }}

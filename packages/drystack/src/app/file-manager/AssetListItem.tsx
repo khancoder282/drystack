@@ -12,18 +12,8 @@ import { Text } from "@keystar/ui/typography";
 import { TooltipTrigger, Tooltip } from "@keystar/ui/tooltip";
 
 import { useMediaLibraryPreviewURL } from "../media-library/useMediaLibraryPreviewURL";
+import { formatBytes } from "./file-kind";
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unitIndex]}`;
-}
 
 export type AssetListItemProps = {
   name: string;
@@ -67,6 +57,7 @@ export function AssetListItem(props: AssetListItemProps) {
       UNSAFE_style={{
         opacity: props.disabled ? 0.45 : undefined,
         cursor: !props.disabled ? "pointer" : undefined,
+        gap: "1rem",
       }}
       onClick={() => {
         if (!props.disabled) props.onOpen();
@@ -140,17 +131,15 @@ export function AssetListItem(props: AssetListItemProps) {
         >
           {props.name}
         </Text>
+        <Text
+          color="neutralSecondary"
+        >
+          {infoText}
+        </Text>
       </Flex>
 
       <Text color="neutralSecondary" UNSAFE_style={{ minWidth: 80 }}>
         {typeText}
-      </Text>
-
-      <Text
-        color="neutralSecondary"
-        UNSAFE_style={{ minWidth: 100, textAlign: "right" }}
-      >
-        {infoText}
       </Text>
 
       {!props.disabled && (props.onDelete || props.onRestore) && (

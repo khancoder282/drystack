@@ -1,33 +1,22 @@
-import { useState } from 'react';
-import { ActionButton } from '@keystar/ui/button';
-import { Checkbox } from '@keystar/ui/checkbox';
-import { Icon } from '@keystar/ui/icon';
-import { fileCodeIcon } from '@keystar/ui/icon/icons/fileCodeIcon';
-import { folderClosedIcon } from '@keystar/ui/icon/icons/folderClosedIcon';
-import { imageIcon } from '@keystar/ui/icon/icons/imageIcon';
-import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
-import { rotateCcwIcon } from '@keystar/ui/icon/icons/rotateCcwIcon';
-import { Flex } from '@keystar/ui/layout';
-import { Text } from '@keystar/ui/typography';
-import { TooltipTrigger, Tooltip } from '@keystar/ui/tooltip';
+import { useState } from "react";
+import { ActionButton } from "@keystar/ui/button";
+import { Checkbox } from "@keystar/ui/checkbox";
+import { Icon } from "@keystar/ui/icon";
+import { fileCodeIcon } from "@keystar/ui/icon/icons/fileCodeIcon";
+import { folderClosedIcon } from "@keystar/ui/icon/icons/folderClosedIcon";
+import { imageIcon } from "@keystar/ui/icon/icons/imageIcon";
+import { trash2Icon } from "@keystar/ui/icon/icons/trash2Icon";
+import { rotateCcwIcon } from "@keystar/ui/icon/icons/rotateCcwIcon";
+import { Flex } from "@keystar/ui/layout";
+import { Text } from "@keystar/ui/typography";
+import { TooltipTrigger, Tooltip } from "@keystar/ui/tooltip";
 
-import { useMediaLibraryPreviewURL } from '../media-library/useMediaLibraryPreviewURL';
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unitIndex]}`;
-}
+import { useMediaLibraryPreviewURL } from "../media-library/useMediaLibraryPreviewURL";
+import { formatBytes } from "./file-kind";
 
 export type AssetCardProps = {
   name: string;
-  kind: 'folder' | 'file';
+  kind: "folder" | "file";
   // real tree path — only required when selectable/deletable
   path?: string;
   isImage?: boolean;
@@ -49,23 +38,23 @@ export type AssetCardProps = {
 // thumbnail (light or dark image) instead of relying on ActionButton's
 // default (transparent until hovered) styling
 const overlayButtonStyle = {
-  backgroundColor: 'rgba(0, 0, 0, 0.55)',
-  color: '#fff',
+  backgroundColor: "rgba(0, 0, 0, 0.55)",
+  color: "#fff",
   borderRadius: 999,
 } as const;
 
 export function AssetCard(props: AssetCardProps) {
   const previewUrl = useMediaLibraryPreviewURL(
-    props.kind === 'file' && props.isImage && props.path ? props.path : null
+    props.kind === "file" && props.isImage && props.path ? props.path : null,
   );
   const [isHovered, setIsHovered] = useState(false);
 
   const infoText =
-    props.kind === 'folder'
-      ? `${props.childCount ?? 0} item${props.childCount === 1 ? '' : 's'}`
+    props.kind === "folder"
+      ? `${props.childCount ?? 0} item${props.childCount === 1 ? "" : "s"}`
       : props.size != null
         ? formatBytes(props.size)
-        : '—';
+        : "—";
   // truncated filename gets an ellipsis — surface the full name + size as a
   // native tooltip so it's still discoverable on hover
   const fullLabel = `${props.name} — ${infoText}`;
@@ -82,14 +71,14 @@ export function AssetCard(props: AssetCardProps) {
       UNSAFE_style={{
         width: 150,
         padding: 8,
-        position: 'relative',
+        position: "relative",
         opacity: props.disabled ? 0.45 : undefined,
       }}
     >
       {!props.disabled && isHovered && (props.onDelete || props.onRestore) && (
         <Flex
           gap="small"
-          UNSAFE_style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}
+          UNSAFE_style={{ position: "absolute", top: 12, right: 12, zIndex: 1 }}
         >
           {props.onRestore && (
             <TooltipTrigger>
@@ -119,9 +108,11 @@ export function AssetCard(props: AssetCardProps) {
       )}
       <ActionButton
         aria-label={
-          props.kind === 'folder' ? `Open ${props.name}` : `Preview ${props.name}`
+          props.kind === "folder"
+            ? `Open ${props.name}`
+            : `Preview ${props.name}`
         }
-        UNSAFE_style={{ height: 'unset', padding: 0 }}
+        UNSAFE_style={{ height: "unset", padding: 0 }}
         isDisabled={props.disabled}
         onPress={props.onOpen}
       >
@@ -129,23 +120,23 @@ export function AssetCard(props: AssetCardProps) {
           alignItems="center"
           justifyContent="center"
           borderRadius="regular"
-          UNSAFE_style={{ width: '100%', height: 110, overflow: 'hidden' }}
+          UNSAFE_style={{ width: "100%", height: 110, overflow: "hidden" }}
         >
           {previewUrl ? (
             <img
               src={previewUrl}
               alt=""
               style={{
-                display: 'block',
-                maxHeight: '100%',
-                maxWidth: '100%',
-                objectFit: 'contain',
+                display: "block",
+                maxHeight: "100%",
+                maxWidth: "100%",
+                objectFit: "contain",
               }}
             />
           ) : (
             <Icon
               src={
-                props.kind === 'folder'
+                props.kind === "folder"
                   ? folderClosedIcon
                   : props.isImage
                     ? imageIcon
@@ -156,7 +147,7 @@ export function AssetCard(props: AssetCardProps) {
           )}
         </Flex>
       </ActionButton>
-      <Flex gap="small" alignItems="center">
+      <Flex alignItems="center">
         {!props.disabled && props.selectable && (
           <Checkbox
             aria-label={`Select ${props.name}`}
@@ -169,20 +160,22 @@ export function AssetCard(props: AssetCardProps) {
           gap="small"
           title={fullLabel}
           onClick={
-            !props.disabled && props.selectable ? props.onToggleSelect : undefined
+            !props.disabled && props.selectable
+              ? props.onToggleSelect
+              : undefined
           }
           UNSAFE_style={{
             minWidth: 0,
             flex: 1,
-            cursor: !props.disabled && props.selectable ? 'pointer' : undefined,
+            cursor: !props.disabled && props.selectable ? "pointer" : undefined,
           }}
         >
           <Text
             UNSAFE_style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              lineHeight: '1.5rem',
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              lineHeight: "1.5rem",
             }}
           >
             {props.name}

@@ -230,20 +230,22 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
       await afterMutation(result);
       return;
     }
-    // picker mode: only cache eagerly when nothing conflicted (`result`
-    // defined means it committed immediately at the exact `${dir}/${name}`
-    // path); if a conflict dialog opened instead, the final path depends on
-    // what the user picks and the tree will catch up on its own next refresh
+    // picker mode: uploads aren't reflected in the shared tree until it
+    // naturally refreshes, so cache the committed bytes locally under their
+    // final (possibly renamed) path — `result` is undefined here whenever a
+    // conflict dialog opened instead, in which case the `onResolve` handler
+    // below does this same caching once the conflicts are resolved
     if (result) {
-      for (const file of fileArray) {
-        const content = new Uint8Array(await file.arrayBuffer());
-        setSessionUploads((prev) => {
-          const next = new Map(prev);
-          next.set(`${dir}/${file.name}`, content);
-          return next;
-        });
-      }
+      cacheSessionUploads(result.uploaded);
     }
+  }
+
+  function cacheSessionUploads(uploaded: { path: string; content: Uint8Array }[]) {
+    setSessionUploads((prev) => {
+      const next = new Map(prev);
+      for (const { path, content } of uploaded) next.set(path, content);
+      return next;
+    });
   }
 
   function requestDelete(paths: string[], label: string) {
@@ -765,6 +767,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
                 applyToAll,
               );
               if (mode.kind === "page") await afterMutation(result);
+              else if (result) cacheSessionUploads(result.uploaded);
             }}
           />
         )}
