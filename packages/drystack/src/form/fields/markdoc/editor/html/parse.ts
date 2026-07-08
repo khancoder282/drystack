@@ -4,9 +4,13 @@ import { MEDIA_LIBRARY_DIRECTORY } from '../../../../../app/media-library/consta
 
 type ParseState = {
   schema: EditorSchema;
-  extraFiles: ReadonlyMap<string, Uint8Array>;
-  otherFiles: ReadonlyMap<string, ReadonlyMap<string, Uint8Array>>;
 };
+
+// images are stored by reference (a path into the media library directory),
+// not embedded bytes, so parsing HTML alone can't produce real image bytes.
+// the shared `image` node view resolves the real bytes lazily via
+// `resolveMediaLibraryBytes` (see schema.tsx) when it notices this sentinel.
+const UNHYDRATED_IMAGE_BYTES = new Uint8Array(0);
 
 const BLOCK_TAGS = new Set([
   'p',
@@ -54,13 +58,10 @@ function inlineNodeToProseMirror(
     const filename = decodeURIComponent(
       src.startsWith(prefix) ? src.slice(prefix.length) : src
     );
-    const content =
-      state.otherFiles.get(MEDIA_LIBRARY_DIRECTORY)?.get(filename) ??
-      state.extraFiles.get(filename);
-    if (!content) return [];
+    if (!filename) return [];
     return [
       schema.nodes.image.createChecked({
-        src: content,
+        src: UNHYDRATED_IMAGE_BYTES,
         filename,
         alt: el.getAttribute('alt') ?? '',
         title: el.getAttribute('title') ?? '',
@@ -252,15 +253,9 @@ function listItems(el: Element, state: ParseState): ProseMirrorNode[] {
 
 export function htmlToProseMirror(
   html: string,
-  schema: EditorSchema,
-  files: ReadonlyMap<string, Uint8Array> | undefined,
-  otherFiles: ReadonlyMap<string, ReadonlyMap<string, Uint8Array>> | undefined
+  schema: EditorSchema
 ): ProseMirrorNode {
-  const state: ParseState = {
-    schema,
-    extraFiles: files ?? new Map(),
-    otherFiles: otherFiles ?? new Map(),
-  };
+  const state: ParseState = { schema };
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const children = blocksFromChildNodes(
     Array.from(doc.body.childNodes),

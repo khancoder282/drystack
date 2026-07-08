@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionButton, Button, ButtonGroup } from '@keystar/ui/button';
 import { Dialog, DialogContainer, useDialogContainer } from '@keystar/ui/dialog';
 import { Icon } from '@keystar/ui/icon';
@@ -10,11 +10,18 @@ import { Flex } from '@keystar/ui/layout';
 import { Heading, Text } from '@keystar/ui/typography';
 import { tokenSchema } from '@keystar/ui/style';
 
-import { useBaseCommit, useRepoInfo } from '../shell/data';
+import { useBaseCommit, useRepoInfo, useTree } from '../shell/data';
 import { useConfig } from '../shell/context';
 import { useRouter } from '../router';
 import { fetchBlob } from '../useItemData';
-import { MediaLibraryPick, registerMediaLibraryOpener } from './bridge';
+import { getTreeNodeAtPath } from '../trees';
+import {
+  MediaLibraryPick,
+  registerMediaLibraryBytesResolver,
+  registerMediaLibraryOpener,
+  registerMediaLibraryUploader,
+} from './bridge';
+import { MEDIA_LIBRARY_DIRECTORY } from './constants';
 import { useMediaLibraryEntries } from './useMediaLibraryEntries';
 import { useMediaLibraryUpload } from './useMediaLibraryUpload';
 import { getUploadedFileObject } from '../../form/fields/image/ui';
@@ -234,6 +241,43 @@ export function MediaLibraryHost() {
     });
     return () => registerMediaLibraryOpener(null);
   }, []);
+
+  const treeEntries = useMediaLibraryEntries();
+  const upload = useMediaLibraryUpload();
+  // tracks uploads made through the eager (drag & drop / paste) path within
+  // this session, since the tree entries above only catch up after a refetch
+  const eagerlyUploadedPaths = useRef(new Set<string>());
+
+  useEffect(() => {
+    registerMediaLibraryUploader(async (content, filename) => {
+      const existingPaths = new Set([
+        ...treeEntries.map(entry => entry.path),
+        ...eagerlyUploadedPaths.current,
+      ]);
+      const path = await upload(content, filename, existingPaths);
+      const relativePath = path.replace(/^\/+/, '');
+      eagerlyUploadedPaths.current.add(relativePath);
+      return { path, filename: relativePath.split('/').pop()! };
+    });
+    return () => registerMediaLibraryUploader(null);
+  }, [treeEntries, upload]);
+
+  const config = useConfig();
+  const baseCommit = useBaseCommit();
+  const repoInfo = useRepoInfo();
+  const { basePath } = useRouter();
+  const tree = useTree().current;
+
+  useEffect(() => {
+    registerMediaLibraryBytesResolver(async filename => {
+      if (tree.kind !== 'loaded') return undefined;
+      const path = `${MEDIA_LIBRARY_DIRECTORY}/${filename}`;
+      const sha = getTreeNodeAtPath(tree.data.tree, path)?.entry.sha;
+      if (!sha) return undefined;
+      return fetchBlob(config, sha, path, baseCommit, repoInfo, basePath);
+    });
+    return () => registerMediaLibraryBytesResolver(null);
+  }, [tree, config, baseCommit, repoInfo, basePath]);
 
   const resolveAndClose = (pick: MediaLibraryPick | undefined) => {
     request?.resolve(pick);

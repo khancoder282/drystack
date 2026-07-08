@@ -41,8 +41,6 @@ function renderNode(node: HtmlNode): string {
 
 type SerializationState = {
   schema: EditorSchema;
-  extraFiles: Map<string, Uint8Array>;
-  otherFiles: Map<string, Map<string, Uint8Array>>;
 };
 
 function _blocks(fragment: Fragment, state: SerializationState): HtmlNode[] {
@@ -71,11 +69,10 @@ function getLeafContent(
     return { kind: 'element', tag: 'br', children: [] };
   }
   if (node.type === schema.nodes.image) {
+    // images are already durably written to the media library directory by
+    // the time they're inserted (via the dialog or the eager upload path for
+    // drag & drop / paste), so serializing only needs to emit the reference
     const { filename } = node.attrs;
-    if (!state.otherFiles.has(MEDIA_LIBRARY_DIRECTORY)) {
-      state.otherFiles.set(MEDIA_LIBRARY_DIRECTORY, new Map());
-    }
-    state.otherFiles.get(MEDIA_LIBRARY_DIRECTORY)!.set(filename, node.attrs.src);
     return {
       kind: 'element',
       tag: 'img',
@@ -221,20 +218,7 @@ function proseMirrorToHtmlNode(
   throw new Error(`Unhandled node type: ${node.type.name}`);
 }
 
-export function serializeFromEditorStateToHTML(node: ProseMirrorNode): {
-  content: string;
-  other: Map<string, Uint8Array>;
-  external: Map<string, Map<string, Uint8Array>>;
-} {
-  const state: SerializationState = {
-    schema: getEditorSchema(node.type.schema),
-    extraFiles: new Map(),
-    otherFiles: new Map(),
-  };
-  const htmlNode = proseMirrorToHtmlNode(node, state);
-  return {
-    content: renderNode(htmlNode),
-    other: state.extraFiles,
-    external: state.otherFiles,
-  };
+export function serializeFromEditorStateToHTML(node: ProseMirrorNode): string {
+  const state: SerializationState = { schema: getEditorSchema(node.type.schema) };
+  return renderNode(proseMirrorToHtmlNode(node, state));
 }

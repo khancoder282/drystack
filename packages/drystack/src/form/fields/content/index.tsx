@@ -1,12 +1,11 @@
-import { ContentFormField } from '../../api';
+import { BasicFormField } from '../../api';
+import { FieldDataError } from '../error';
 import {
   DocumentFieldInput,
   getDefaultValue,
   serializeFromEditorStateHTML,
   createEditorSchema,
   parseToEditorStateHTML,
-  createEditorStateFromYJS,
-  prosemirrorToYXmlFragment,
 } from '#field-ui/content';
 import type { EditorSchema } from '../markdoc/editor/schema';
 import type { EditorState } from 'prosemirror-state';
@@ -14,11 +13,6 @@ import {
   MarkdocEditorOptions,
   editorOptionsToConfig,
 } from '../markdoc/config';
-import type { XmlFragment } from 'yjs';
-import { MEDIA_LIBRARY_DIRECTORY } from '../../../app/media-library/constants';
-
-const textDecoder = new TextDecoder();
-const textEncoder = new TextEncoder();
 
 export function content({
   label,
@@ -41,7 +35,6 @@ export function content({
   };
   return {
     kind: 'form',
-    formKind: 'content',
     defaultValue() {
       return getDefaultValue(getSchema());
     },
@@ -54,44 +47,28 @@ export function content({
         />
       );
     },
-    parse: (_, { content, other, external }) => {
-      const text = textDecoder.decode(content);
-      return parseToEditorStateHTML(text, getSchema(), other, external);
+    parse(value) {
+      if (value === undefined) return getDefaultValue(getSchema());
+      if (typeof value !== 'string') {
+        throw new FieldDataError('Must be a string');
+      }
+      return parseToEditorStateHTML(value, getSchema());
     },
-    contentExtension: '.html',
     validate(value) {
       return value;
     },
-    directories: [MEDIA_LIBRARY_DIRECTORY],
     serialize(value) {
-      const out = serializeFromEditorStateHTML(value);
-      return {
-        content: textEncoder.encode(out.content),
-        external: out.external,
-        other: out.other,
-        value: undefined,
-      };
+      return { value: serializeFromEditorStateHTML(value) };
     },
     reader: {
-      parse: (_, { content }) => {
-        return content ? textDecoder.decode(content) : '';
-      },
-    },
-    collaboration: {
-      toYjs(value) {
-        return prosemirrorToYXmlFragment(value.doc);
-      },
-      fromYjs(yjsValue, awareness) {
-        return createEditorStateFromYJS(
-          getSchema(),
-          yjsValue as XmlFragment,
-          awareness
-        );
+      parse(value) {
+        if (typeof value !== 'string') return '';
+        return value;
       },
     },
   };
 }
 
 export declare namespace content {
-  type Field = ContentFormField<EditorState, EditorState, string>;
+  type Field = BasicFormField<EditorState, EditorState, string>;
 }

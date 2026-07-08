@@ -1,4 +1,4 @@
-import { config, fields, singleton } from '@drystack/core';
+import { collection, config, fields, singleton } from '@drystack/core';
 
 export default config({
   storage: {
@@ -20,6 +20,19 @@ export default config({
             'Edit this content in the Keystatic admin UI at /drystack.',
         }),
         image: fields.image({ label: 'Image' }),
+        body: fields.content({ label: 'Body' }),
+      },
+    }),
+  },
+  collections: {
+    posts: collection({
+      label: 'Posts',
+      path: 'src/content/posts/*',
+      slugField: 'title',
+      format: 'json',
+      schema: {
+        title: fields.slug({ name: { label: 'Title' } }),
+        cover: fields.image({ label: 'Cover image' }),
         body: fields.content({ label: 'Body' }),
       },
     }),

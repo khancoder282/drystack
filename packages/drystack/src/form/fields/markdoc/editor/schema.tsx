@@ -36,7 +36,10 @@ import { getCustomMarkSpecs, getCustomNodeSpecs } from './custom-components';
 import { EditorConfig } from '../config';
 import { toSerialized } from './props-serialization';
 import { getInitialPropsValue } from '../../../initial-values';
-import { openMediaLibrary } from '../../../../app/media-library/bridge';
+import {
+  openMediaLibrary,
+  resolveMediaLibraryBytes,
+} from '../../../../app/media-library/bridge';
 import { base64UrlEncode, base64UrlDecode } from '#base64';
 
 const blockElementSpacing = css({
@@ -371,13 +374,7 @@ const nodeSpecs = {
       },
     },
     nodeView(node) {
-      const blob = new Blob([node.attrs.src], {
-        type: node.attrs.filename.endsWith('.svg')
-          ? 'image/svg+xml'
-          : undefined,
-      });
       const dom = document.createElement('img');
-      dom.src = URL.createObjectURL(blob);
       dom.alt = node.attrs.alt;
       dom.title = node.attrs.title;
       dom.dataset.filename = node.attrs.filename;
@@ -394,10 +391,32 @@ const nodeSpecs = {
           },
         })
       );
+      let objectUrl: string | undefined;
+      const setSrcFromBytes = (bytes: Uint8Array) => {
+        const blob = new Blob([bytes], {
+          type: node.attrs.filename.endsWith('.svg')
+            ? 'image/svg+xml'
+            : undefined,
+        });
+        objectUrl = URL.createObjectURL(blob);
+        dom.src = objectUrl;
+      };
+      let cancelled = false;
+      if (node.attrs.src.byteLength > 0) {
+        setSrcFromBytes(node.attrs.src);
+      } else {
+        // parsed from stored HTML without embedded bytes; the media library
+        // directory is the source of truth for the actual file content
+        resolveMediaLibraryBytes(node.attrs.filename).then(bytes => {
+          if (cancelled || !bytes) return;
+          setSrcFromBytes(bytes);
+        });
+      }
       return {
         dom,
         destroy() {
-          URL.revokeObjectURL(dom.src);
+          cancelled = true;
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
         },
       };
     },

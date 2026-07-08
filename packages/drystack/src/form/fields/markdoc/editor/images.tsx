@@ -7,7 +7,10 @@ import { imageIcon } from '@keystar/ui/icon/icons/imageIcon';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Text } from '@keystar/ui/typography';
 
-import { openMediaLibrary } from '../../../../app/media-library/bridge';
+import {
+  openMediaLibrary,
+  uploadToMediaLibrary,
+} from '../../../../app/media-library/bridge';
 import { EditorSchema, getEditorSchema } from './schema';
 import { ToolbarButton } from './Toolbar';
 import { EditorConfig } from '../config';
@@ -75,11 +78,16 @@ export function imageDropPlugin(schema: EditorSchema) {
           ) {
             const { transformFilename } = schema.config.image;
             (async () => {
+              const content = new Uint8Array(await file.arrayBuffer());
+              const filename = transformFilename(file.name);
+              // durably persist to the media library directory immediately,
+              // the same way picking a file in the dialog does
+              const uploaded = await uploadToMediaLibrary(content, filename);
               const slice = Slice.maxOpen(
                 Fragment.from(
                   imageType.createChecked({
-                    src: new Uint8Array(await file.arrayBuffer()),
-                    filename: transformFilename(file.name),
+                    src: content,
+                    filename: uploaded?.filename ?? filename,
                   })
                 )
               );
@@ -121,11 +129,14 @@ export function imageDropPlugin(schema: EditorSchema) {
             const { transformFilename } = schema.config.image;
 
             (async () => {
+              const content = new Uint8Array(await file.arrayBuffer());
+              const filename = transformFilename(file.name);
+              const uploaded = await uploadToMediaLibrary(content, filename);
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
                   imageType.createChecked({
-                    src: new Uint8Array(await file.arrayBuffer()),
-                    filename: transformFilename(file.name),
+                    src: content,
+                    filename: uploaded?.filename ?? filename,
                   })
                 )
               );
