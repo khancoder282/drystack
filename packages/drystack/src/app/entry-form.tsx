@@ -132,7 +132,7 @@ export function FormForEntry({
       <PathContextProvider value={emptyArray}>
         <SlugFieldProvider value={slugField}>
           <SplitView
-            autoSaveId="keystatic-content-split-view"
+            autoSaveId="drystack-content-split-view"
             defaultSize={320}
             minSize={240}
             maxSize={480}

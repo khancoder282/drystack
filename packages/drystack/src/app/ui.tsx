@@ -314,7 +314,7 @@ export function Keystatic(props: {
     <ClientOnly>
       <Wrapper>
         <AppSlugProvider value={props.appSlug}>
-          <RouterProvider basePath={props.basePath ?? '/keystatic'}>
+          <RouterProvider basePath={props.basePath ?? '/drystack'}>
             <Provider config={props.config}>
               <PageInner config={props.config} />
             </Provider>

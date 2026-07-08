@@ -21,7 +21,7 @@ export const MainPanelLayout = (props: { children: ReactNode }) => {
   return (
     <ContentPanelProvider value={context}>
       <SplitView
-        autoSaveId="keystatic-app-split-view"
+        autoSaveId="drystack-app-split-view"
         isCollapsed={isBelowDesktop || !sidebarState.isOpen}
         onCollapseChange={sidebarState.toggle}
         defaultSize={260}

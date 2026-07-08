@@ -22,7 +22,7 @@ let _treeStore: UseStore;
 
 function getTreeStore() {
   if (!_treeStore) {
-    _treeStore = createStore('keystatic-trees', 'trees');
+    _treeStore = createStore('drystack-trees', 'trees');
   }
   return _treeStore;
 }
@@ -31,7 +31,7 @@ let _blobStore: UseStore;
 
 function getBlobStore() {
   if (!_blobStore) {
-    _blobStore = createStore('keystatic-blobs', 'blobs');
+    _blobStore = createStore('drystack-blobs', 'blobs');
   }
   return _blobStore;
 }

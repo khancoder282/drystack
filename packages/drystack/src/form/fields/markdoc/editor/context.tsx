@@ -9,13 +9,13 @@ export function useEditorContext() {
 }
 
 export function getRootId(id: string) {
-  return `keystatic-editor-root-${id}`;
+  return `drystack-editor-root-${id}`;
 }
 export function getToolbarId(id: string) {
-  return `keystatic-editor-toolbar-${id}`;
+  return `drystack-editor-toolbar-${id}`;
 }
 export function getContentId(id: string) {
-  return `keystatic-editor-content-${id}`;
+  return `drystack-editor-content-${id}`;
 }
 export function getRoot(id: string) {
   return document.getElementById(getRootId(id));

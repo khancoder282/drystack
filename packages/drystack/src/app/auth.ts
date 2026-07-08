@@ -14,7 +14,7 @@ export function getSyncAuth(config: Config) {
   }
   if (config.storage.kind === 'github') {
     const cookies = parse(document.cookie);
-    const accessToken = cookies['keystatic-gh-access-token'];
+    const accessToken = cookies['drystack-gh-access-token'];
     if (!accessToken) {
       return null;
     }
@@ -29,7 +29,7 @@ export function getSyncAuth(config: Config) {
 export function getCloudAuth(config: Config) {
   if (!config.cloud?.project) return null;
   const unparsedTokenData = localStorage.getItem(
-    'keystatic-cloud-access-token'
+    'drystack-cloud-access-token'
   );
   let tokenData;
   try {
@@ -61,7 +61,7 @@ export async function getAuth(config: Config, basePath: string) {
           });
           if (res.status === 200) {
             const cookies = parse(document.cookie);
-            const accessToken = cookies['keystatic-gh-access-token'];
+            const accessToken = cookies['drystack-gh-access-token'];
             if (accessToken) {
               return { accessToken };
             }

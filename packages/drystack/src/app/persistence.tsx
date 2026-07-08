@@ -66,7 +66,7 @@ let store: UseStore;
 
 function getStore() {
   if (!store) {
-    store = createStore('keystatic', 'items');
+    store = createStore('drystack', 'items');
   }
   return store;
 }

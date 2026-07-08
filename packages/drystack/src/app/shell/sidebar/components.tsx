@@ -227,7 +227,7 @@ export function UserMenu(user: {
                         },
                       });
                     }
-                    localStorage.removeItem('keystatic-cloud-access-token');
+                    localStorage.removeItem('drystack-cloud-access-token');
                     window.location.reload();
                     break;
                   }

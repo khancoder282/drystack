@@ -207,7 +207,7 @@ export async function redirectToCloudAuth(
   );
   const state = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
   localStorage.setItem(
-    'keystatic-cloud-state',
+    'drystack-cloud-state',
     JSON.stringify({ state, from, code_verifier })
   );
   const url = new URL(`${KEYSTATIC_CLOUD_API_URL}/oauth/authorize`);

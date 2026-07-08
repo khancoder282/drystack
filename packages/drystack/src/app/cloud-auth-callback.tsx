@@ -24,7 +24,7 @@ export function KeystaticCloudAuthCallback({ config }: { config: Config }) {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const storedState = useMemo(() => {
-    const _storedState = localStorage.getItem('keystatic-cloud-state');
+    const _storedState = localStorage.getItem('drystack-cloud-state');
     const storedState = (() => {
       try {
         return storedStateSchema.create(JSON.parse(_storedState || ''));
@@ -63,7 +63,7 @@ export function KeystaticCloudAuthCallback({ config }: { config: Config }) {
         const data = await res.json();
         const parsed = tokenResponseSchema.create(data);
         localStorage.setItem(
-          'keystatic-cloud-access-token',
+          'drystack-cloud-access-token',
           JSON.stringify({
             token: parsed.access_token,
             project,

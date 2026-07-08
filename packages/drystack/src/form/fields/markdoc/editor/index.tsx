@@ -102,7 +102,7 @@ export const Editor = forwardRef(function Editor(
       <ProseMirrorEditor value={value} onChange={onChange} ref={ref}>
         <Box
           id={getRootId(id)}
-          data-keystatic-editor="root"
+          data-drystack-editor="root"
           data-layout={entryLayoutPane}
           backgroundColor="canvas"
           minWidth={0}
@@ -118,7 +118,7 @@ export const Editor = forwardRef(function Editor(
             },
           })}
         >
-          <Toolbar id={getToolbarId(id)} data-keystatic-editor="toolbar" />
+          <Toolbar id={getToolbarId(id)} data-drystack-editor="toolbar" />
           <div>
             <ProseMirrorEditable
               {...props}
@@ -126,7 +126,7 @@ export const Editor = forwardRef(function Editor(
               role="textbox"
               aria-multiline="true"
               id={getContentId(id)}
-              data-keystatic-editor="content"
+              data-drystack-editor="content"
             />
           </div>
         </Box>

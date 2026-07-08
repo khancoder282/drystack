@@ -10,7 +10,7 @@ const ThemeContext = createContext<ThemeContextType>({
   },
 });
 export const ThemeProvider = ThemeContext.Provider;
-const STORAGE_KEY = 'keystatic-color-scheme';
+const STORAGE_KEY = 'drystack-color-scheme';
 
 // only for initializing the provider, for consumption use `useThemeContext()`
 export function useTheme() {

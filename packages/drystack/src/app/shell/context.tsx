@@ -23,7 +23,7 @@ export function useConfig(): Config {
 type AppStateType = { basePath: string };
 
 export const AppStateContext = createContext<AppStateType>({
-  basePath: '/keystatic',
+  basePath: '/drystack',
 });
 
 export function useAppState() {

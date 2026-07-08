@@ -153,7 +153,7 @@ export function CollabProvider(props: { children: ReactNode; config: Config }) {
     const doc = new Y.Doc();
     const data = doc.getMap<Y.Doc>('data');
     const awareness = new Awareness(doc);
-    const idb = createIndexedDBProvider(doc, `keystatic-2-${project}`);
+    const idb = createIndexedDBProvider(doc, `drystack-2-${project}`);
     const provider = new WebsocketProvider({
       doc,
       url: `wss://live.keystatic.cloud/${project}?v=${PKG_VERSION}`,

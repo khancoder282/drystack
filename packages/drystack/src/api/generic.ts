@@ -178,7 +178,7 @@ export function makeGenericAPIRouteHandler(
     }
     if (joined === 'github/logout') {
       const cookies = cookie.parse(req.headers.get('cookie') ?? '');
-      const access_token = cookies['keystatic-gh-access-token'];
+      const access_token = cookies['drystack-gh-access-token'];
       if (access_token) {
         await fetch(
           `https://api.github.com/applications/${config.clientId}/token`,
@@ -194,8 +194,8 @@ export function makeGenericAPIRouteHandler(
         );
       }
       return redirect(config.uiBasePath, [
-        ['Set-Cookie', immediatelyExpiringCookie('keystatic-gh-access-token')],
-        ['Set-Cookie', immediatelyExpiringCookie('keystatic-gh-refresh-token')],
+        ['Set-Cookie', immediatelyExpiringCookie('drystack-gh-access-token')],
+        ['Set-Cookie', immediatelyExpiringCookie('drystack-gh-refresh-token')],
       ]);
     }
     if (joined === 'github/created-app') {
@@ -283,7 +283,7 @@ async function getTokenCookies(
   const headers: [string, string][] = [
     [
       'Set-Cookie',
-      cookie.serialize('keystatic-gh-access-token', tokenData.access_token, {
+      cookie.serialize('drystack-gh-access-token', tokenData.access_token, {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
         maxAge: tokenData.expires_in,
@@ -294,7 +294,7 @@ async function getTokenCookies(
     [
       'Set-Cookie',
       cookie.serialize(
-        'keystatic-gh-refresh-token',
+        'drystack-gh-refresh-token',
         await encryptValue(tokenData.refresh_token, config.secret),
         {
           sameSite: 'lax',
@@ -317,7 +317,7 @@ async function getRefreshToken(
   config: InnerAPIRouteConfig
 ) {
   const cookies = cookie.parse(req.headers.get('cookie') || '');
-  const refreshTokenCookie = cookies['keystatic-gh-refresh-token'];
+  const refreshTokenCookie = cookies['drystack-gh-refresh-token'];
   if (!refreshTokenCookie) return;
   let refreshToken;
   try {

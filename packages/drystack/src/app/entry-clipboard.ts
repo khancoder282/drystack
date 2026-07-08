@@ -6,7 +6,7 @@ import { parseEntry } from './useItemData';
 import { FormatInfo, getEntryDataFilepath } from './utils';
 import * as s from 'superstruct';
 
-const keystaticEntryAttributeSchema = s.type({
+const drystackEntryAttributeSchema = s.type({
   slug: s.optional(s.string()),
   files: s.record(
     s.string(),
@@ -26,12 +26,12 @@ function parseEntryFromHtml(
 ) {
   const parsedHtml = new DOMParser().parseFromString(html, 'text/html');
   const pre = parsedHtml.querySelector('pre');
-  if (!pre?.dataset.keystaticEntry) {
+  if (!pre?.dataset.drystackEntry) {
     return;
   }
   try {
-    const parsed = JSON.parse(pre.dataset.keystaticEntry);
-    const entryInfo = keystaticEntryAttributeSchema.create(parsed);
+    const parsed = JSON.parse(pre.dataset.drystackEntry);
+    const entryInfo = drystackEntryAttributeSchema.create(parsed);
     const files = new Map<string, Uint8Array>(Object.entries(entryInfo.files));
     return parseEntry(
       {
@@ -125,7 +125,7 @@ function serializeEntryForClipboard(
     state,
   });
   const element = document.createElement('pre');
-  element.dataset.keystaticEntry = JSON.stringify({
+  element.dataset.drystackEntry = JSON.stringify({
     slug: slug?.value,
     files: Object.fromEntries(
       files.map(f => [f.path, base64UrlEncode(f.contents)])

@@ -17,7 +17,7 @@ function insertFragmentButDifferent(editor: Editor, nodes: Descendant[]) {
   }
 }
 
-const clipboardFormatKey = 'x-keystatic-fragment';
+const clipboardFormatKey = 'x-drystack-fragment';
 
 export const getDefaultView = (value: any): globalThis.Window | null => {
   return (
@@ -139,7 +139,7 @@ function setFragmentData(e: Editor, data: DataTransfer) {
     return val;
   });
   const encoded = window.btoa(encodeURIComponent(string));
-  attach.setAttribute('data-keystatic-fragment', encoded);
+  attach.setAttribute('data-drystack-fragment', encoded);
   data.setData(`application/${clipboardFormatKey}`, encoded);
 
   // Add the content to a <div> so that we can get its inner HTML.
@@ -152,7 +152,7 @@ function setFragmentData(e: Editor, data: DataTransfer) {
   contents.ownerDocument.body.removeChild(div);
 }
 
-const catchSlateFragment = /data-keystatic-fragment="(.+?)"/m;
+const catchSlateFragment = /data-drystack-fragment="(.+?)"/m;
 const getSlateFragmentAttribute = (
   dataTransfer: DataTransfer
 ): string | void => {
@@ -161,7 +161,7 @@ const getSlateFragmentAttribute = (
   return fragment;
 };
 
-const bytesName = '$$keystaticUint8Array$$';
+const bytesName = '$$drystackUint8Array$$';
 
 export function withPasting(editor: Editor): Editor {
   const { insertTextData } = editor;
