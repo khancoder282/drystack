@@ -1,0 +1,6 @@
+{
+  "key": "theDefaultBranchInYourRepository",
+  "value": "Nhánh mặc định trong kho lưu trữ của bạn. Hãy chọn nhánh này để bắt đầu công việc mới không phụ thuộc vào nhánh hiện tại.",
+  "notes": "",
+  "type": "git-related"
+}

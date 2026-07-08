@@ -1,0 +1,6 @@
+{
+  "key": "theCurrentlyCheckedOutBranch",
+  "value": "Nhánh đang được checkout hiện tại. Hãy chọn nhánh này nếu bạn cần tiếp tục công việc từ nhánh hiện tại.",
+  "notes": "",
+  "type": "git-related"
+}

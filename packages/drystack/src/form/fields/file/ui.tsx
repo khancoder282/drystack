@@ -1,30 +1,23 @@
 import { ButtonGroup, ActionButton, Button } from '@keystar/ui/button';
 import { FieldDescription, FieldLabel, FieldMessage } from '@keystar/ui/field';
 import { Flex } from '@keystar/ui/layout';
-import { TextField } from '@keystar/ui/text-field';
 
-import { useIsInDocumentEditor } from '../document/DocumentEditor';
 import { useId, useReducer } from 'react';
 import { FormFieldInputProps } from '../../api';
-import { getUploadedFile, useObjectURL } from '../image/ui';
+import { openMediaLibrary } from '../../../app/media-library/bridge';
+import { useMediaLibraryPreviewURL } from '../../../app/media-library/useMediaLibraryPreviewURL';
 
-// TODO: button labels ("Choose file", "Remove", "Download") need i18n support
+// TODO: button labels ("Choose from library", "Remove", "Download") need i18n support
 export function FileFieldInput(
-  props: FormFieldInputProps<{
-    data: Uint8Array;
-    extension: string;
-    filename: string;
-  } | null> & {
+  props: FormFieldInputProps<string | null> & {
     label: string;
     description: string | undefined;
     validation: { isRequired?: boolean } | undefined;
-    transformFilename: ((originalFilename: string) => string) | undefined;
   }
 ) {
   const { value } = props;
   const [blurred, onBlur] = useReducer(() => true, false);
-  const isInEditor = useIsInDocumentEditor();
-  const objectUrl = useObjectURL(value === null ? null : value.data, undefined);
+  const objectUrl = useMediaLibraryPreviewURL(value);
   const labelId = useId();
   const descriptionId = useId();
   return (
@@ -50,19 +43,14 @@ export function FileFieldInput(
       <ButtonGroup>
         <ActionButton
           onPress={async () => {
-            const file = await getUploadedFile('');
-            if (file) {
-              props.onChange({
-                data: file.content,
-                filename: props.transformFilename
-                  ? props.transformFilename(file.filename)
-                  : file.filename,
-                extension: file.filename.match(/\.([^.]+$)/)?.[1] ?? '',
-              });
+            const picked = await openMediaLibrary({ accept: 'any' });
+            onBlur();
+            if (picked) {
+              props.onChange(picked.path);
             }
           }}
         >
-          Choose file
+          Choose from library
         </ActionButton>
         {value !== null && (
           <>
@@ -78,7 +66,7 @@ export function FileFieldInput(
             {objectUrl && (
               <Button
                 href={objectUrl}
-                download={value.filename}
+                download={value.split('/').pop()}
                 prominence="low"
               >
                 Download
@@ -87,15 +75,6 @@ export function FileFieldInput(
           </>
         )}
       </ButtonGroup>
-      {isInEditor && value !== null && (
-        <TextField
-          label="Filename"
-          onChange={filename => {
-            props.onChange({ ...value, filename });
-          }}
-          value={value.filename}
-        />
-      )}
       {(props.forceValidation || blurred) &&
         props.validation?.isRequired &&
         value === null && (

@@ -19,6 +19,8 @@ export default config({
           defaultValue:
             'Edit this content in the Keystatic admin UI at /drystack.',
         }),
+        image: fields.image({ label: 'Image' }),
+        body: fields.content({ label: 'Body' }),
       },
     }),
   },

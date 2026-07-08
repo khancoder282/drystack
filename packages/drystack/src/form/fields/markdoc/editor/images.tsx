@@ -7,7 +7,7 @@ import { imageIcon } from '@keystar/ui/icon/icons/imageIcon';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Text } from '@keystar/ui/typography';
 
-import { getUploadedFileObject } from '../../image/ui';
+import { openMediaLibrary } from '../../../../app/media-library/bridge';
 import { EditorSchema, getEditorSchema } from './schema';
 import { ToolbarButton } from './Toolbar';
 import { EditorConfig } from '../config';
@@ -145,14 +145,16 @@ export function ImageToolbarButton() {
         command={(_, dispatch, view) => {
           if (dispatch && view) {
             (async () => {
-              const file = await getUploadedFileObject('image/*');
+              const picked = await openMediaLibrary({ accept: 'image' });
               const schema = getEditorSchema(view.state.schema);
-              if (!file || !schema.config.image) return;
+              if (!picked || !schema.config.image) return;
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
                   view.state.schema.nodes.image.createChecked({
-                    src: new Uint8Array(await file.arrayBuffer()),
-                    filename: schema.config.image.transformFilename(file.name),
+                    src: picked.content,
+                    filename: schema.config.image.transformFilename(
+                      picked.filename
+                    ),
                   })
                 )
               );

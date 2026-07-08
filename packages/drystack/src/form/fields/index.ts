@@ -6,7 +6,6 @@ export { cloudImage } from './cloudImage';
 export { conditional } from './conditional';
 export { date } from './date';
 export { datetime } from './datetime';
-export { document } from './document';
 export { empty } from './empty';
 export { emptyDocument } from './emptyDocument';
 export { emptyContent } from './emptyContent';
@@ -26,4 +25,4 @@ export { url } from './url';
 export { ignored } from './ignored';
 
 // NOTE: must be the last export to avoid circular dependencies
-export { mdx, markdoc } from './markdoc';
+export { content } from './content';

@@ -36,7 +36,7 @@ import { getCustomMarkSpecs, getCustomNodeSpecs } from './custom-components';
 import { EditorConfig } from '../config';
 import { toSerialized } from './props-serialization';
 import { getInitialPropsValue } from '../../../initial-values';
-import { getUploadedFileObject } from '../../image/ui';
+import { openMediaLibrary } from '../../../../app/media-library/bridge';
 import { base64UrlEncode, base64UrlDecode } from '#base64';
 
 const blockElementSpacing = css({
@@ -351,14 +351,16 @@ const nodeSpecs = {
         return (state, dispatch, view) => {
           if (dispatch && view) {
             (async () => {
-              const file = await getUploadedFileObject('image/*');
+              const picked = await openMediaLibrary({ accept: 'image' });
               const schema = getEditorSchema(nodeType.schema);
-              if (!file || !schema.config.image) return;
+              if (!picked || !schema.config.image) return;
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
                   nodeType.createChecked({
-                    src: new Uint8Array(await file.arrayBuffer()),
-                    filename: schema.config.image.transformFilename(file.name),
+                    src: picked.content,
+                    filename: schema.config.image.transformFilename(
+                      picked.filename
+                    ),
                   })
                 )
               );

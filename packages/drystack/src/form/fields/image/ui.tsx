@@ -2,11 +2,11 @@ import { ButtonGroup, ActionButton } from '@keystar/ui/button';
 import { FieldDescription, FieldLabel, FieldMessage } from '@keystar/ui/field';
 import { Flex, Box } from '@keystar/ui/layout';
 import { tokenSchema } from '@keystar/ui/style';
-import { TextField } from '@keystar/ui/text-field';
 
-import { useIsInDocumentEditor } from '../document/DocumentEditor';
 import { useState, useEffect, useReducer, useId } from 'react';
 import { FormFieldInputProps } from '../../api';
+import { openMediaLibrary } from '../../../app/media-library/bridge';
+import { useMediaLibraryPreviewURL } from '../../../app/media-library/useMediaLibraryPreviewURL';
 
 export function getUploadedFileObject(
   accept: string
@@ -61,26 +61,17 @@ export function useObjectURL(
   return url;
 }
 
-// TODO: button labels ("Choose file", "Remove") need i18n support
+// TODO: button labels ("Choose from library", "Remove") need i18n support
 export function ImageFieldInput(
-  props: FormFieldInputProps<{
-    data: Uint8Array;
-    extension: string;
-    filename: string;
-  } | null> & {
+  props: FormFieldInputProps<string | null> & {
     label: string;
     description: string | undefined;
     validation: { isRequired?: boolean } | undefined;
-    transformFilename: ((originalFile: string) => string) | undefined;
   }
 ) {
   const { value } = props;
   const [blurred, onBlur] = useReducer(() => true, false);
-  const isInEditor = useIsInDocumentEditor();
-  const objectUrl = useObjectURL(
-    value === null ? null : value.data,
-    value?.extension === 'svg' ? 'image/svg+xml' : undefined
-  );
+  const objectUrl = useMediaLibraryPreviewURL(value);
   const labelId = useId();
   const descriptionId = useId();
   return (
@@ -106,22 +97,14 @@ export function ImageFieldInput(
       <ButtonGroup>
         <ActionButton
           onPress={async () => {
-            const image = await getUploadedImage();
-            if (image) {
-              const extension = image.filename.match(/\.([^.]+$)/)?.[1];
-              if (extension) {
-                props.onChange({
-                  data: image.content,
-                  extension,
-                  filename: props.transformFilename
-                    ? props.transformFilename(image.filename)
-                    : image.filename,
-                });
-              }
+            const picked = await openMediaLibrary({ accept: 'image' });
+            onBlur();
+            if (picked) {
+              props.onChange(picked.path);
             }
           }}
         >
-          Choose file
+          Choose from library
         </ActionButton>
         {value !== null && (
           <ActionButton
@@ -153,15 +136,6 @@ export function ImageFieldInput(
             }}
           />
         </Box>
-      )}
-      {isInEditor && value !== null && (
-        <TextField
-          label="Filename"
-          onChange={filename => {
-            props.onChange({ ...value, filename });
-          }}
-          value={value.filename}
-        />
       )}
       {(props.forceValidation || blurred) &&
         props.validation?.isRequired &&

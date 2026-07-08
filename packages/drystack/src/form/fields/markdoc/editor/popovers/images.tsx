@@ -19,7 +19,7 @@ import { editIcon } from '@keystar/ui/icon/icons/editIcon';
 import { fileUpIcon } from '@keystar/ui/icon/icons/fileUpIcon';
 import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { TooltipTrigger, Tooltip } from '@keystar/ui/tooltip';
-import { getUploadedFileObject } from '../../../image/ui';
+import { openMediaLibrary } from '../../../../../app/media-library/bridge';
 import { EditorState, NodeSelection } from 'prosemirror-state';
 import { useEditorDispatchCommand, useEditorSchema } from '../editor-view';
 import { Node } from 'prosemirror-model';
@@ -46,13 +46,12 @@ export function ImagePopover(props: {
             <ActionButton
               prominence="low"
               onPress={async () => {
-                const file = await getUploadedFileObject('image/*');
-                if (!file) return;
-                const src = new Uint8Array(await file.arrayBuffer());
+                const picked = await openMediaLibrary({ accept: 'image' });
+                if (!picked) return;
                 runCommand((state, dispatch) => {
                   if (dispatch) {
                     const { tr } = state;
-                    tr.setNodeAttribute(props.pos, 'src', src);
+                    tr.setNodeAttribute(props.pos, 'src', picked.content);
                     const newState = state.apply(tr);
                     tr.setSelection(
                       NodeSelection.create(newState.doc, props.pos)
@@ -65,7 +64,7 @@ export function ImagePopover(props: {
             >
               <Icon src={fileUpIcon} />
             </ActionButton>
-            <Tooltip>Choose file</Tooltip>
+            <Tooltip>Choose from library</Tooltip>
           </TooltipTrigger>
         </Flex>
         <Divider orientation="vertical" />

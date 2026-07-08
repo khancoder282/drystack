@@ -9,6 +9,7 @@ import { updateTreeWithChanges, blobSha } from '../app/trees';
 import { Config } from '../config';
 import { getDirectoriesForTreeKey } from '../app/tree-key';
 import { fields } from '../form/api';
+import { MEDIA_LIBRARY_DIRECTORY } from '../app/media-library/constants';
 import ignore from 'ignore';
 
 async function readDirEntries(dir: string) {
@@ -136,5 +137,6 @@ export function getAllowedDirectories(config: Config) {
       )
     );
   }
+  allowedDirectories.push(MEDIA_LIBRARY_DIRECTORY);
   return [...new Set(allowedDirectories)];
 }
