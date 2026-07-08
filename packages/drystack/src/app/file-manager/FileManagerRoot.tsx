@@ -195,7 +195,12 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
 
   async function pickSingle(path: string) {
     const picks = await resolvePicks([path]);
-    if (mode.kind === "picker" && picks.length) mode.onPick(picks);
+    if (mode.kind === "picker" && picks.length) {
+      mode.onPick(picks);
+    } else if (mode.kind === "picker" && picks.length === 0) {
+      // File was selected but couldn't be loaded - likely not in tree yet
+      console.warn('Selected file could not be loaded:', path);
+    }
   }
 
   async function pickSelected() {

@@ -109,11 +109,16 @@ export function ImageFieldInput(
       <ButtonGroup>
         <ActionButton
           onPress={async () => {
-            const picked = await openMediaLibrary({ accept: 'image' });
-            onBlur();
-            if (picked) {
-              setFreshUpload({ path: picked.path, content: picked.content });
-              props.onChange(picked.path);
+            try {
+              const picked = await openMediaLibrary({ accept: 'image' });
+              onBlur();
+              if (picked) {
+                setFreshUpload({ path: picked.path, content: picked.content });
+                props.onChange(picked.path);
+              }
+            } catch (err) {
+              console.error('Failed to pick image:', err);
+              onBlur();
             }
           }}
         >
