@@ -380,6 +380,10 @@ const nodeSpecs = {
       width: { default: null },
       height: { default: null },
       align: { default: null },
+      // editor-only convenience flag for the width/height fields in the
+      // image edit dialog — not serialized to DOM, so it resets to its
+      // default (locked) on reload rather than round-tripping
+      lockAspectRatio: { default: true },
     },
     insertMenu: {
       label: 'Image',

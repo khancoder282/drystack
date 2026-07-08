@@ -8,14 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { ToggleButton } from '@keystar/ui/button';
-import { Icon } from '@keystar/ui/icon';
-import { link2Icon } from '@keystar/ui/icon/icons/link2Icon';
-import { link2OffIcon } from '@keystar/ui/icon/icons/link2OffIcon';
-import { Flex } from '@keystar/ui/layout';
-import { NumberField } from '@keystar/ui/number-field';
 import { css, tokenSchema } from '@keystar/ui/style';
-import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 
 import { resolveMediaLibraryBytes } from '../../../../app/media-library/bridge';
 import { useEditorSchema, useEditorViewRef } from './editor-view';
@@ -58,7 +51,7 @@ type DragState = {
   lastHeight: number;
 };
 
-function useImageObjectUrl(node: ProseMirrorNode): string | undefined {
+export function useImageObjectUrl(node: ProseMirrorNode): string | undefined {
   const [url, setUrl] = useState<string | undefined>(undefined);
   const src: Uint8Array = node.attrs.src;
   const filename: string = node.attrs.filename;
@@ -125,12 +118,14 @@ export function ImageNodeView(props: {
   const imgRef = useRef<HTMLImageElement | null>(null);
   const naturalRatioRef = useRef<number | null>(null);
   const dragRef = useRef<DragState | null>(null);
-  const lockedRef = useRef(false);
+  // the lock toggle lives in the image edit popover now; the node attr is
+  // the shared source of truth between that toggle and this drag handling
+  const locked: boolean = node.attrs.lockAspectRatio ?? true;
+  const lockedRef = useRef(locked);
+  lockedRef.current = locked;
   const getPosRef = useRef(props.getPos);
   getPosRef.current = props.getPos;
 
-  const [locked, setLocked] = useState(false);
-  lockedRef.current = locked;
   const [dragSize, setDragSize] = useState<{
     width: number;
     height: number;
@@ -221,35 +216,6 @@ export function ImageNodeView(props: {
     };
   }, [onDragEnd, onDragMove]);
 
-  const ratioForField = () => {
-    const img = imgRef.current;
-    return (
-      naturalRatioRef.current ??
-      (img && img.naturalHeight
-        ? img.naturalWidth / img.naturalHeight
-        : renderedSize && renderedSize.height
-          ? renderedSize.width / renderedSize.height
-          : 1)
-    );
-  };
-
-  const onWidthField = (value: number) => {
-    if (!Number.isFinite(value) || value <= 0) return;
-    const w = Math.round(value);
-    commitAttrs({
-      width: w,
-      height: locked ? Math.round(w / ratioForField()) : height,
-    });
-  };
-  const onHeightField = (value: number) => {
-    if (!Number.isFinite(value) || value <= 0) return;
-    const h = Math.round(value);
-    commitAttrs({
-      height: h,
-      width: locked ? Math.round(h * ratioForField()) : width,
-    });
-  };
-
   const displayWidth = dragSize?.width ?? width ?? renderedSize?.width;
   const displayHeight = dragSize?.height ?? height ?? renderedSize?.height;
 
@@ -303,76 +269,19 @@ export function ImageNodeView(props: {
         }}
       />
 
-      {showControls && (
-        <>
-          {HANDLES.map(handle => (
-            <span
-              key={handle.dir}
-              contentEditable={false}
-              onPointerDown={event => startDrag(handle, event)}
-              className={handleClass}
-              style={{
-                ...handle.position,
-                cursor: handle.cursor,
-              }}
-            />
-          ))}
-
-          <div
+      {showControls &&
+        HANDLES.map(handle => (
+          <span
+            key={handle.dir}
             contentEditable={false}
-            className={toolbarClass}
-            onPointerDown={event => event.stopPropagation()}
-            onMouseDown={event => event.stopPropagation()}
-          >
-            <Flex gap="regular" alignItems="center">
-              <NumberField
-                aria-label="Width (px)"
-                width="scale.1700"
-                minValue={MIN_SIZE}
-                step={1}
-                hideStepper
-                value={displayWidth ?? undefined}
-                onChange={onWidthField}
-              />
-              <NumberField
-                aria-label="Height (px)"
-                width="scale.1700"
-                minValue={MIN_SIZE}
-                step={1}
-                hideStepper
-                value={displayHeight ?? undefined}
-                onChange={onHeightField}
-              />
-              <TooltipTrigger>
-                <ToggleButton
-                  prominence="low"
-                  isSelected={locked}
-                  aria-label="Lock aspect ratio"
-                  onPress={() => {
-                    setLocked(wasLocked => {
-                      const turningOn = !wasLocked;
-                      // syncing height to width immediately (rather than
-                      // waiting for the next resize) so the lock doesn't
-                      // silently leave a mismatched aspect ratio in place
-                      const w = displayWidth;
-                      if (turningOn && w != null) {
-                        commitAttrs({
-                          width: Math.round(w),
-                          height: Math.round(w / ratioForField()),
-                        });
-                      }
-                      return turningOn;
-                    });
-                  }}
-                >
-                  <Icon src={locked ? link2Icon : link2OffIcon} />
-                </ToggleButton>
-                <Tooltip>Lock aspect ratio</Tooltip>
-              </TooltipTrigger>
-            </Flex>
-          </div>
-        </>
-      )}
+            onPointerDown={event => startDrag(handle, event)}
+            className={handleClass}
+            style={{
+              ...handle.position,
+              cursor: handle.cursor,
+            }}
+          />
+        ))}
     </span>
   );
 }
@@ -383,7 +292,6 @@ const wrapperClass = css({
   // browser actually lays it out
   '&[data-selected="true"]': {
     outline: `2px solid ${tokenSchema.color.alias.borderSelected}`,
-    outlineOffset: 2,
   },
 });
 
@@ -397,18 +305,4 @@ const handleClass = css({
   backgroundColor: tokenSchema.color.background.canvas,
   border: `2px solid ${tokenSchema.color.alias.borderSelected}`,
   zIndex: 1,
-});
-
-const toolbarClass = css({
-  position: 'absolute',
-  bottom: '100%',
-  left: '50%',
-  transform: 'translate(-50%, -8px)',
-  zIndex: 2,
-  padding: tokenSchema.size.space.regular,
-  borderRadius: tokenSchema.size.radius.medium,
-  backgroundColor: tokenSchema.color.background.surface,
-  border: `${tokenSchema.size.border.regular} solid ${tokenSchema.color.border.neutral}`,
-  boxShadow: `0 1px 4px ${tokenSchema.color.shadow.regular}`,
-  whiteSpace: 'nowrap',
 });
