@@ -18,7 +18,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
                 name: 'keystatic',
                 resolveId(id) {
                   if (id === 'virtual:keystatic-config') {
-                    return this.resolve('./keystatic.config', './a');
+                    return this.resolve('./drystack.config', './a');
                   }
                   if (id === virtualPathModuleId) {
                     return resolvedVirtualPathModuleId;
@@ -34,7 +34,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
               },
             ],
             optimizeDeps: {
-              entries: ['keystatic.config.*', '.astro/keystatic-imports.js'],
+              entries: ['drystack.config.*', '.astro/keystatic-imports.js'],
             },
           },
         });

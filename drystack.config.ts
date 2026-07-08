@@ -7,7 +7,6 @@ export default config({
   singletons: {
     demo: singleton({
       label: 'Demo',
-      format: 'json',
       schema: {
         heading: fields.text({
           label: 'Heading',
@@ -27,9 +26,7 @@ export default config({
   collections: {
     posts: collection({
       label: 'Posts',
-      path: 'src/content/posts/*',
       slugField: 'title',
-      format: 'json',
       schema: {
         title: fields.slug({ name: { label: 'Title' } }),
         cover: fields.image({ label: 'Cover image' }),

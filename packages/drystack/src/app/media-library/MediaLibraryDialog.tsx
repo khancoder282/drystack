@@ -8,7 +8,6 @@ import { fileCodeIcon } from '@keystar/ui/icon/icons/fileCodeIcon';
 import { Content, Footer } from '@keystar/ui/slots';
 import { Flex } from '@keystar/ui/layout';
 import { Heading, Text } from '@keystar/ui/typography';
-import { tokenSchema } from '@keystar/ui/style';
 
 import { useBaseCommit, useRepoInfo, useTree } from '../shell/data';
 import { useConfig } from '../shell/context';
@@ -45,21 +44,37 @@ function filenameOf(path: string) {
   return path.split('/').pop()!;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
+  }
+  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unitIndex]}`;
+}
+
 type MediaAsset =
   | { source: 'tree'; path: string; sha: string }
   | { source: 'upload'; path: string; content: Uint8Array };
 
-function useAssetObjectURL(asset: MediaAsset): string | null {
+function useAssetPreview(asset: MediaAsset): {
+  objectUrl: string | null;
+  size: number | null;
+} {
   const config = useConfig();
   const baseCommit = useBaseCommit();
   const repoInfo = useRepoInfo();
   const { basePath } = useRouter();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [treeSize, setTreeSize] = useState<number | null>(null);
   const isImage = isImagePath(asset.path);
 
   useEffect(() => {
-    if (!isImage) return;
     if (asset.source === 'upload') {
+      if (!isImage) return;
       const url = URL.createObjectURL(new Blob([asset.content]));
       setObjectUrl(url);
       return () => URL.revokeObjectURL(url);
@@ -70,8 +85,11 @@ function useAssetObjectURL(asset: MediaAsset): string | null {
       fetchBlob(config, asset.sha, asset.path, baseCommit, repoInfo, basePath)
     ).then(bytes => {
       if (cancelled) return;
-      createdUrl = URL.createObjectURL(new Blob([bytes]));
-      setObjectUrl(createdUrl);
+      setTreeSize(bytes.byteLength);
+      if (isImage) {
+        createdUrl = URL.createObjectURL(new Blob([bytes]));
+        setObjectUrl(createdUrl);
+      }
     });
     return () => {
       cancelled = true;
@@ -80,7 +98,10 @@ function useAssetObjectURL(asset: MediaAsset): string | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.source, asset.path, asset.source === 'tree' ? asset.sha : '']);
 
-  return objectUrl;
+  return {
+    objectUrl,
+    size: asset.source === 'upload' ? asset.content.byteLength : treeSize,
+  };
 }
 
 function MediaLibraryAssetButton(props: {
@@ -92,7 +113,7 @@ function MediaLibraryAssetButton(props: {
   const baseCommit = useBaseCommit();
   const repoInfo = useRepoInfo();
   const { basePath } = useRouter();
-  const objectUrl = useAssetObjectURL(asset);
+  const { objectUrl, size } = useAssetPreview(asset);
   const isImage = isImagePath(asset.path);
 
   return (
@@ -122,31 +143,45 @@ function MediaLibraryAssetButton(props: {
         alignItems="center"
         UNSAFE_style={{ width: 140 }}
       >
-        {objectUrl ? (
-          <img
-            src={objectUrl}
-            alt=""
-            style={{
-              display: 'block',
-              maxHeight: 96,
-              maxWidth: '100%',
-              borderRadius: tokenSchema.size.radius.regular,
-            }}
-          />
-        ) : (
-          <Icon src={isImage ? imageIcon : fileCodeIcon} size="large" />
-        )}
-        <Text
-          size="small"
-          UNSAFE_style={{
-            maxWidth: 140,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
+        <Flex
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor="canvas"
+          border="neutral"
+          borderRadius="regular"
+          UNSAFE_style={{ width: '100%', height: 96, overflow: 'hidden' }}
         >
-          {filenameOf(asset.path)}
-        </Text>
+          {objectUrl ? (
+            <img
+              src={objectUrl}
+              alt=""
+              style={{
+                display: 'block',
+                maxHeight: '100%',
+                maxWidth: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          ) : (
+            <Icon src={isImage ? imageIcon : fileCodeIcon} size="large" />
+          )}
+        </Flex>
+        <Flex direction="column" alignItems="center" UNSAFE_style={{ width: '100%' }}>
+          <Text
+            size="small"
+            UNSAFE_style={{
+              maxWidth: 140,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {filenameOf(asset.path)}
+          </Text>
+          <Text size="small" color="neutralTertiary">
+            {size !== null ? formatBytes(size) : '—'}
+          </Text>
+        </Flex>
       </Flex>
     </ActionButton>
   );

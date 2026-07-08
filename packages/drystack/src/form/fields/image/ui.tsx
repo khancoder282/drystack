@@ -71,7 +71,19 @@ export function ImageFieldInput(
 ) {
   const { value } = props;
   const [blurred, onBlur] = useReducer(() => true, false);
-  const objectUrl = useMediaLibraryPreviewURL(value);
+  // caches the bytes for a file picked/uploaded in this session, since a
+  // brand new upload isn't in the tree yet — useMediaLibraryPreviewURL
+  // resolves via tree sha and can't find it until the tree next refreshes
+  const [freshUpload, setFreshUpload] = useState<{
+    path: string;
+    content: Uint8Array;
+  } | null>(null);
+  const freshObjectUrl = useObjectURL(
+    freshUpload && freshUpload.path === value ? freshUpload.content : null,
+    undefined
+  );
+  const treeObjectUrl = useMediaLibraryPreviewURL(value);
+  const objectUrl = freshObjectUrl ?? treeObjectUrl;
   const labelId = useId();
   const descriptionId = useId();
   return (
@@ -100,6 +112,7 @@ export function ImageFieldInput(
             const picked = await openMediaLibrary({ accept: 'image' });
             onBlur();
             if (picked) {
+              setFreshUpload({ path: picked.path, content: picked.content });
               props.onChange(picked.path);
             }
           }}
@@ -110,6 +123,7 @@ export function ImageFieldInput(
           <ActionButton
             prominence="low"
             onPress={() => {
+              setFreshUpload(null);
               props.onChange(null);
               onBlur();
             }}

@@ -1,22 +1,24 @@
 ---
-import { createReader } from '@drystack/core/reader';
-import config from '../../keystatic.config';
+import { createReader } from "@drystack/core/reader";
+import config from "../../drystack.config";
+import Image from "astro/components/Image.astro";
 
 const reader = createReader(process.cwd(), config);
 const demo = await reader.singletons.demo.read();
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>{demo?.heading ?? 'Astro'}</h1>
-		{demo?.description && <p>{demo.description}</p>}
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Astro</title>
+  </head>
+  <body>
+    <h1>{demo?.heading ?? "Astro"}</h1>
+    {demo?.description && <p>{demo.description}</p>}
+    {demo?.image && <Image width={160} height={180} alt="" src={demo?.image} style="object-fit: cover" />}
+  </body>
 </html>
