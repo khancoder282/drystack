@@ -65,6 +65,11 @@ export type EditorConfig = {
     | undefined;
   divider: boolean;
   codeBlock: { schema: Record<string, ComponentSchema> } | undefined;
+  // whether this field's serialization format supports storing an image by
+  // reference (an unhydrated node resolved lazily from the shared media
+  // library directory) rather than always embedding its bytes as a sibling
+  // file — only the HTML-backed `content` field supports this today
+  supportsMediaLibraryReferences: boolean;
 };
 
 export type MarkdocEditorOptions = {
@@ -117,8 +122,12 @@ export type MDXEditorOptions = {
 
 type EditorOptions = MarkdocEditorOptions | MDXEditorOptions;
 
-export function editorOptionsToConfig(options: EditorOptions): EditorConfig {
+export function editorOptionsToConfig(
+  options: EditorOptions,
+  supportsMediaLibraryReferences = false
+): EditorConfig {
   return {
+    supportsMediaLibraryReferences,
     bold: options.bold ?? true,
     italic: options.italic ?? true,
     strikethrough: options.strikethrough ?? true,

@@ -3,16 +3,19 @@ import { base64Encode } from '#base64';
 import { useRouter } from '../router';
 import { hydrateTreeCacheWithEntries } from '../shell/data';
 import { TreeEntry } from '../trees';
-import { MEDIA_LIBRARY_DIRECTORY } from './constants';
 
-function uniquePath(filename: string, existing: ReadonlySet<string>) {
+function uniquePath(
+  directory: string,
+  filename: string,
+  existing: ReadonlySet<string>
+) {
   const dotIndex = filename.lastIndexOf('.');
   const base = dotIndex === -1 ? filename : filename.slice(0, dotIndex);
   const extension = dotIndex === -1 ? '' : filename.slice(dotIndex);
-  let candidate = `${MEDIA_LIBRARY_DIRECTORY}/${filename}`;
+  let candidate = `${directory}/${filename}`;
   let i = 1;
   while (existing.has(candidate)) {
-    candidate = `${MEDIA_LIBRARY_DIRECTORY}/${base}-${i}${extension}`;
+    candidate = `${directory}/${base}-${i}${extension}`;
     i++;
   }
   return candidate;
@@ -30,11 +33,12 @@ export function useMediaLibraryUpload() {
 
   return useCallback(
     async (
+      directory: string,
       content: Uint8Array,
       filename: string,
       existingPaths: ReadonlySet<string>
     ): Promise<string> => {
-      const path = uniquePath(filename, existingPaths);
+      const path = uniquePath(directory, filename, existingPaths);
       const res = await fetch(`/api${basePath}/update`, {
         method: 'POST',
         headers: {

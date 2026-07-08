@@ -40,6 +40,7 @@ import {
   openMediaLibrary,
   resolveMediaLibraryBytes,
 } from '../../../../app/media-library/bridge';
+import { imageAttrsForPick } from './image-pick';
 import { base64UrlEncode, base64UrlDecode } from '#base64';
 
 const blockElementSpacing = css({
@@ -357,14 +358,14 @@ const nodeSpecs = {
               const picked = await openMediaLibrary({ accept: 'image' });
               const schema = getEditorSchema(nodeType.schema);
               if (!picked || !schema.config.image) return;
+              const { src, filename } = imageAttrsForPick(
+                picked,
+                schema.config.image.transformFilename,
+                schema.config.supportsMediaLibraryReferences
+              );
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
-                  nodeType.createChecked({
-                    src: picked.content,
-                    filename: schema.config.image.transformFilename(
-                      picked.filename
-                    ),
-                  })
+                  nodeType.createChecked({ src, filename })
                 )
               );
             })();

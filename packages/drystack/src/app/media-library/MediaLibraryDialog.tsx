@@ -1,52 +1,66 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActionButton, Button, ButtonGroup } from '@keystar/ui/button';
-import { Dialog, DialogContainer, useDialogContainer } from '@keystar/ui/dialog';
-import { Icon } from '@keystar/ui/icon';
-import { fileUpIcon } from '@keystar/ui/icon/icons/fileUpIcon';
-import { imageIcon } from '@keystar/ui/icon/icons/imageIcon';
-import { fileCodeIcon } from '@keystar/ui/icon/icons/fileCodeIcon';
-import { Content, Footer } from '@keystar/ui/slots';
-import { Flex } from '@keystar/ui/layout';
-import { Heading, Text } from '@keystar/ui/typography';
-
-import { useBaseCommit, useRepoInfo, useTree } from '../shell/data';
-import { useConfig } from '../shell/context';
-import { useRouter } from '../router';
-import { fetchBlob } from '../useItemData';
-import { getTreeNodeAtPath } from '../trees';
+import { useEffect, useRef, useState } from "react";
+import { ActionButton, Button, ButtonGroup } from "@keystar/ui/button";
 import {
+  Dialog,
+  DialogContainer,
+  useDialogContainer,
+} from "@keystar/ui/dialog";
+import { Icon } from "@keystar/ui/icon";
+import { fileUpIcon } from "@keystar/ui/icon/icons/fileUpIcon";
+import { imageIcon } from "@keystar/ui/icon/icons/imageIcon";
+import { fileCodeIcon } from "@keystar/ui/icon/icons/fileCodeIcon";
+import { Content } from "@keystar/ui/slots";
+import { Box, Flex } from "@keystar/ui/layout";
+import { Item, TabList, TabPanels, Tabs } from "@keystar/ui/tabs";
+import { Heading, Text } from "@keystar/ui/typography";
+
+import { useBaseCommit, useRepoInfo, useTree } from "../shell/data";
+import { useConfig } from "../shell/context";
+import { useRouter } from "../router";
+import { fetchBlob } from "../useItemData";
+import { getTreeNodeAtPath } from "../trees";
+import {
+  MediaLibraryLocalScope,
   MediaLibraryPick,
   registerMediaLibraryBytesResolver,
   registerMediaLibraryOpener,
   registerMediaLibraryUploader,
-} from './bridge';
-import { MEDIA_LIBRARY_DIRECTORY } from './constants';
-import { useMediaLibraryEntries } from './useMediaLibraryEntries';
-import { useMediaLibraryUpload } from './useMediaLibraryUpload';
-import { getUploadedFileObject } from '../../form/fields/image/ui';
+} from "./bridge";
+import { MEDIA_LIBRARY_DIRECTORY } from "./constants";
+import { useDirectoryEntries } from "./useMediaLibraryEntries";
+import { useMediaLibraryUpload } from "./useMediaLibraryUpload";
+import { getUploadedFileObject } from "../../form/fields/image/ui";
+
+// bytes for files picked/uploaded from the shared library this session,
+// keyed by filename (relative to MEDIA_LIBRARY_DIRECTORY). A freshly
+// uploaded library file isn't in the tree yet (see useMediaLibraryUpload's
+// note on not calling setTreeSha), so the image node view's
+// resolveMediaLibraryBytes lookup can't find it via tree sha until the tree
+// next refreshes — this cache lets it resolve immediately instead.
+const libraryBytesCache = new Map<string, Uint8Array>();
 
 const IMAGE_EXTENSIONS = new Set([
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'webp',
-  'svg',
-  'avif',
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "svg",
+  "avif",
 ]);
 
 function isImagePath(path: string) {
-  const ext = path.split('.').pop()?.toLowerCase();
+  const ext = path.split(".").pop()?.toLowerCase();
   return !!ext && IMAGE_EXTENSIONS.has(ext);
 }
 
 function filenameOf(path: string) {
-  return path.split('/').pop()!;
+  return path.split("/").pop()!;
 }
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
+  const units = ["KB", "MB", "GB"];
   let value = bytes / 1024;
   let unitIndex = 0;
   while (value >= 1024 && unitIndex < units.length - 1) {
@@ -57,8 +71,8 @@ function formatBytes(bytes: number): string {
 }
 
 type MediaAsset =
-  | { source: 'tree'; path: string; sha: string }
-  | { source: 'upload'; path: string; content: Uint8Array };
+  | { source: "tree"; path: string; sha: string }
+  | { source: "upload"; path: string; content: Uint8Array };
 
 function useAssetPreview(asset: MediaAsset): {
   objectUrl: string | null;
@@ -73,7 +87,7 @@ function useAssetPreview(asset: MediaAsset): {
   const isImage = isImagePath(asset.path);
 
   useEffect(() => {
-    if (asset.source === 'upload') {
+    if (asset.source === "upload") {
       if (!isImage) return;
       const url = URL.createObjectURL(new Blob([asset.content]));
       setObjectUrl(url);
@@ -82,8 +96,8 @@ function useAssetPreview(asset: MediaAsset): {
     let cancelled = false;
     let createdUrl: string | null = null;
     Promise.resolve(
-      fetchBlob(config, asset.sha, asset.path, baseCommit, repoInfo, basePath)
-    ).then(bytes => {
+      fetchBlob(config, asset.sha, asset.path, baseCommit, repoInfo, basePath),
+    ).then((bytes) => {
       if (cancelled) return;
       setTreeSize(bytes.byteLength);
       if (isImage) {
@@ -96,16 +110,17 @@ function useAssetPreview(asset: MediaAsset): {
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asset.source, asset.path, asset.source === 'tree' ? asset.sha : '']);
+  }, [asset.source, asset.path, asset.source === "tree" ? asset.sha : ""]);
 
   return {
     objectUrl,
-    size: asset.source === 'upload' ? asset.content.byteLength : treeSize,
+    size: asset.source === "upload" ? asset.content.byteLength : treeSize,
   };
 }
 
 function MediaLibraryAssetButton(props: {
   asset: MediaAsset;
+  source: "library" | "local";
   onPick: (pick: MediaLibraryPick) => void;
 }) {
   const { asset } = props;
@@ -118,9 +133,10 @@ function MediaLibraryAssetButton(props: {
 
   return (
     <ActionButton
+      UNSAFE_style={{ height: "unset", paddingBlock: ".5rem" }}
       onPress={async () => {
         const content =
-          asset.source === 'upload'
+          asset.source === "upload"
             ? asset.content
             : await fetchBlob(
                 config,
@@ -128,12 +144,16 @@ function MediaLibraryAssetButton(props: {
                 asset.path,
                 baseCommit,
                 repoInfo,
-                basePath
+                basePath,
               );
+        if (props.source === "library") {
+          libraryBytesCache.set(filenameOf(asset.path), content);
+        }
         props.onPick({
           path: `/${asset.path}`,
           filename: filenameOf(asset.path),
           content,
+          source: props.source,
         });
       }}
     >
@@ -149,37 +169,43 @@ function MediaLibraryAssetButton(props: {
           backgroundColor="canvas"
           border="neutral"
           borderRadius="regular"
-          UNSAFE_style={{ width: '100%', height: 96, overflow: 'hidden' }}
+          UNSAFE_style={{ width: "100%", height: 96, overflow: "hidden" }}
         >
           {objectUrl ? (
             <img
               src={objectUrl}
               alt=""
               style={{
-                display: 'block',
-                maxHeight: '100%',
-                maxWidth: '100%',
-                objectFit: 'contain',
+                display: "block",
+                maxHeight: "100%",
+                maxWidth: "100%",
+                objectFit: "contain",
               }}
             />
           ) : (
             <Icon src={isImage ? imageIcon : fileCodeIcon} size="large" />
           )}
         </Flex>
-        <Flex direction="column" alignItems="center" UNSAFE_style={{ width: '100%' }}>
+        <Flex
+          direction="column"
+          alignItems="flex-start"
+          UNSAFE_style={{ width: "100%" }}
+        >
           <Text
             size="small"
             UNSAFE_style={{
               maxWidth: 140,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {filenameOf(asset.path)}
           </Text>
-          <Text size="small" color="neutralTertiary">
-            {size !== null ? formatBytes(size) : '—'}
+          <Text size="small" color="neutralTertiary" UNSAFE_style={{
+            opacity: .5
+          }}>
+            {size !== null ? formatBytes(size) : "—"}
           </Text>
         </Flex>
       </Flex>
@@ -187,12 +213,18 @@ function MediaLibraryAssetButton(props: {
   );
 }
 
-function MediaLibraryDialogContent(props: {
-  accept: 'image' | 'any' | undefined;
-  onPick: (pick: MediaLibraryPick | undefined) => void;
+// the scrollable region asset grids live in — sized generously (and
+// independently of the dialog's intrinsic height) so more files are visible
+// at once instead of the grid being squeezed down to a couple of rows
+const ASSET_GRID_HEIGHT = "min(65vh, 640px)";
+
+function MediaLibraryPane(props: {
+  directory: string;
+  source: "library" | "local";
+  accept: "image" | "any" | undefined;
+  onPick: (pick: MediaLibraryPick) => void;
 }) {
-  const { dismiss } = useDialogContainer();
-  const treeEntries = useMediaLibraryEntries();
+  const treeEntries = useDirectoryEntries(props.directory);
   const [sessionUploads, setSessionUploads] = useState<
     { path: string; content: Uint8Array }[]
   >([]);
@@ -201,60 +233,139 @@ function MediaLibraryDialogContent(props: {
 
   const assets: MediaAsset[] = [
     ...sessionUploads.map(
-      (u): MediaAsset => ({ source: 'upload', path: u.path, content: u.content })
+      (u): MediaAsset => ({
+        source: "upload",
+        path: u.path,
+        content: u.content,
+      }),
     ),
     ...treeEntries
-      .filter(entry => !sessionUploads.some(u => u.path === entry.path))
-      .map((entry): MediaAsset => ({ source: 'tree', path: entry.path, sha: entry.sha })),
-  ].filter(asset => (props.accept === 'image' ? isImagePath(asset.path) : true));
+      .filter((entry) => !sessionUploads.some((u) => u.path === entry.path))
+      .map(
+        (entry): MediaAsset => ({
+          source: "tree",
+          path: entry.path,
+          sha: entry.sha,
+        }),
+      ),
+  ].filter((asset) =>
+    props.accept === "image" ? isImagePath(asset.path) : true,
+  );
+
+  return (
+    <Flex direction="column" gap="large">
+      <Box
+        UNSAFE_style={{
+          height: ASSET_GRID_HEIGHT,
+          overflowY: "auto",
+        }}
+      >
+        {assets.length === 0 ? (
+          <Text color="neutralTertiary">No files yet. Upload one below.</Text>
+        ) : (
+          <Flex wrap gap="regular">
+            {assets.map((asset) => (
+              <MediaLibraryAssetButton
+                key={asset.path}
+                asset={asset}
+                source={props.source}
+                onPick={props.onPick}
+              />
+            ))}
+          </Flex>
+        )}
+      </Box>
+      <ActionButton
+        isDisabled={isUploading}
+        onPress={async () => {
+          const file = await getUploadedFileObject(
+            props.accept === "image" ? "image/*" : "",
+          );
+          if (!file) return;
+          setIsUploading(true);
+          try {
+            const content = new Uint8Array(await file.arrayBuffer());
+            const existingPaths = new Set([
+              ...treeEntries.map((entry) => entry.path),
+              ...sessionUploads.map((u) => u.path),
+            ]);
+            const path = await upload(
+              props.directory,
+              content,
+              file.name,
+              existingPaths,
+            );
+            const relativePath = path.replace(/^\/+/, "");
+            setSessionUploads((prev) => [
+              ...prev,
+              { path: relativePath, content },
+            ]);
+            if (props.source === "library") {
+              libraryBytesCache.set(filenameOf(relativePath), content);
+            }
+            props.onPick({
+              path,
+              filename: filenameOf(path),
+              content,
+              source: props.source,
+            });
+          } finally {
+            setIsUploading(false);
+          }
+        }}
+      >
+        <Icon src={fileUpIcon} />
+        <Text>{isUploading ? "Uploading…" : "Upload new file"}</Text>
+      </ActionButton>
+    </Flex>
+  );
+}
+
+function MediaLibraryDialogContent(props: {
+  accept: "image" | "any" | undefined;
+  local: MediaLibraryLocalScope | undefined;
+  onPick: (pick: MediaLibraryPick | undefined) => void;
+}) {
+  const { dismiss } = useDialogContainer();
 
   return (
     <Dialog size="large">
       <Heading>Media library</Heading>
       <Content>
-        <Flex direction="column" gap="large">
-          {assets.length === 0 && (
-            <Text color="neutralTertiary">No files yet. Upload one below.</Text>
-          )}
-          <Flex wrap gap="regular">
-            {assets.map(asset => (
-              <MediaLibraryAssetButton
-                key={asset.path}
-                asset={asset}
-                onPick={props.onPick}
-              />
-            ))}
-          </Flex>
-        </Flex>
+        {props.local ? (
+          <Tabs aria-label="Media source">
+            <TabList>
+              <Item key="local">{props.local.label}</Item>
+              <Item key="library">Library</Item>
+            </TabList>
+            <TabPanels>
+              <Item key="local">
+                <MediaLibraryPane
+                  directory={props.local.directory}
+                  source="local"
+                  accept={props.accept}
+                  onPick={props.onPick}
+                />
+              </Item>
+              <Item key="library">
+                <MediaLibraryPane
+                  directory={MEDIA_LIBRARY_DIRECTORY}
+                  source="library"
+                  accept={props.accept}
+                  onPick={props.onPick}
+                />
+              </Item>
+            </TabPanels>
+          </Tabs>
+        ) : (
+          <MediaLibraryPane
+            directory={MEDIA_LIBRARY_DIRECTORY}
+            source="library"
+            accept={props.accept}
+            onPick={props.onPick}
+          />
+        )}
       </Content>
-      <Footer>
-        <ActionButton
-          isDisabled={isUploading}
-          onPress={async () => {
-            const file = await getUploadedFileObject(
-              props.accept === 'image' ? 'image/*' : ''
-            );
-            if (!file) return;
-            setIsUploading(true);
-            try {
-              const content = new Uint8Array(await file.arrayBuffer());
-              const existingPaths = new Set([
-                ...treeEntries.map(entry => entry.path),
-                ...sessionUploads.map(u => u.path),
-              ]);
-              const path = await upload(content, file.name, existingPaths);
-              const relativePath = path.replace(/^\/+/, '');
-              setSessionUploads(prev => [...prev, { path: relativePath, content }]);
-              props.onPick({ path, filename: filenameOf(path), content });
-            } finally {
-              setIsUploading(false);
-            }
-          }}
-        >
-          <Icon src={fileUpIcon} />
-          <Text>{isUploading ? 'Uploading…' : 'Upload new file'}</Text>
-        </ActionButton>
-      </Footer>
       <ButtonGroup>
         <Button onPress={dismiss}>Cancel</Button>
       </ButtonGroup>
@@ -264,20 +375,21 @@ function MediaLibraryDialogContent(props: {
 
 export function MediaLibraryHost() {
   const [request, setRequest] = useState<{
-    accept: 'image' | 'any' | undefined;
+    accept: "image" | "any" | undefined;
+    local: MediaLibraryLocalScope | undefined;
     resolve: (pick: MediaLibraryPick | undefined) => void;
   } | null>(null);
 
   useEffect(() => {
-    registerMediaLibraryOpener(options => {
-      return new Promise(resolve => {
-        setRequest({ accept: options?.accept, resolve });
+    registerMediaLibraryOpener((options) => {
+      return new Promise((resolve) => {
+        setRequest({ accept: options?.accept, local: options?.local, resolve });
       });
     });
     return () => registerMediaLibraryOpener(null);
   }, []);
 
-  const treeEntries = useMediaLibraryEntries();
+  const treeEntries = useDirectoryEntries(MEDIA_LIBRARY_DIRECTORY);
   const upload = useMediaLibraryUpload();
   // tracks uploads made through the eager (drag & drop / paste) path within
   // this session, since the tree entries above only catch up after a refetch
@@ -286,13 +398,19 @@ export function MediaLibraryHost() {
   useEffect(() => {
     registerMediaLibraryUploader(async (content, filename) => {
       const existingPaths = new Set([
-        ...treeEntries.map(entry => entry.path),
+        ...treeEntries.map((entry) => entry.path),
         ...eagerlyUploadedPaths.current,
       ]);
-      const path = await upload(content, filename, existingPaths);
-      const relativePath = path.replace(/^\/+/, '');
+      const path = await upload(
+        MEDIA_LIBRARY_DIRECTORY,
+        content,
+        filename,
+        existingPaths,
+      );
+      const relativePath = path.replace(/^\/+/, "");
       eagerlyUploadedPaths.current.add(relativePath);
-      return { path, filename: relativePath.split('/').pop()! };
+      libraryBytesCache.set(relativePath.split("/").pop()!, content);
+      return { path, filename: relativePath.split("/").pop()! };
     });
     return () => registerMediaLibraryUploader(null);
   }, [treeEntries, upload]);
@@ -304,8 +422,10 @@ export function MediaLibraryHost() {
   const tree = useTree().current;
 
   useEffect(() => {
-    registerMediaLibraryBytesResolver(async filename => {
-      if (tree.kind !== 'loaded') return undefined;
+    registerMediaLibraryBytesResolver(async (filename) => {
+      const cached = libraryBytesCache.get(filename);
+      if (cached) return cached;
+      if (tree.kind !== "loaded") return undefined;
       const path = `${MEDIA_LIBRARY_DIRECTORY}/${filename}`;
       const sha = getTreeNodeAtPath(tree.data.tree, path)?.entry.sha;
       if (!sha) return undefined;
@@ -324,6 +444,7 @@ export function MediaLibraryHost() {
       {request && (
         <MediaLibraryDialogContent
           accept={request.accept}
+          local={request.local}
           onPick={resolveAndClose}
         />
       )}

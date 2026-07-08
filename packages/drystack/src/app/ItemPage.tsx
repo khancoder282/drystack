@@ -50,7 +50,11 @@ import {
   prettyErrorForCreateBranchMutation,
   useCreateBranchMutation,
 } from './branch-selection';
-import { FormForEntry, containerWidthForEntryLayout } from './entry-form';
+import {
+  EntryDirectoryProvider,
+  FormForEntry,
+  containerWidthForEntryLayout,
+} from './entry-form';
 import { ForkRepoDialog } from './fork-repo';
 import l10nMessages from './l10n';
 import { NotFoundBoundary, notFound } from './not-found';
@@ -281,13 +285,15 @@ function ItemPageInner(
             onUpdate();
           }}
         >
-          <FormForEntry
-            previewProps={props.previewProps as any}
-            forceValidation={forceValidation}
-            entryLayout={collectionConfig.entryLayout}
-            formatInfo={formatInfo}
-            slugField={slugInfo}
-          />
+          <EntryDirectoryProvider value={currentBasePath}>
+            <FormForEntry
+              previewProps={props.previewProps as any}
+              forceValidation={forceValidation}
+              entryLayout={collectionConfig.entryLayout}
+              formatInfo={formatInfo}
+              slugField={slugInfo}
+            />
+          </EntryDirectoryProvider>
         </Box>
         <DialogContainer
           // ideally this would be a popover on desktop but using a DialogTrigger wouldn't work since

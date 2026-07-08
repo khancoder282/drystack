@@ -1,3 +1,4 @@
+import { useContext } from 'react';
 import { Field, FieldProps } from '@keystar/ui/field';
 import { FormFieldInputProps } from '../../api';
 import { EditorState } from 'prosemirror-state';
@@ -7,7 +8,12 @@ import { EditorSchema, getEditorSchema } from './editor/schema';
 import { markdocToProseMirror } from './editor/markdoc/parse';
 import { format, parse } from '#markdoc';
 import { proseMirrorToMarkdoc } from './editor/markdoc/serialize';
-import { useEntryLayoutSplitPaneContext } from '../../../app/entry-form';
+import {
+  useEntryDirectoryContext,
+  useEntryLayoutSplitPaneContext,
+} from '../../../app/entry-form';
+import { PathContext } from '../text/path-slug-context';
+import { MediaScopeProvider } from './editor/media-scope';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import {
@@ -128,6 +134,8 @@ export function DocumentFieldInput(
   }
 ) {
   let entryLayoutPane = useEntryLayoutSplitPaneContext();
+  let entryDirectory = useEntryDirectoryContext();
+  let fieldPath = useContext(PathContext);
 
   let fieldProps: FieldProps = {
     label: props.label,
@@ -142,14 +150,29 @@ export function DocumentFieldInput(
   }
 
   return (
-    <Field
-      height={entryLayoutPane === 'main' ? '100%' : undefined}
-      {...fieldProps}
+    <MediaScopeProvider
+      value={
+        entryDirectory
+          ? {
+              directory: [entryDirectory, ...fieldPath].join('/'),
+              label: 'This entry',
+            }
+          : null
+      }
     >
-      {inputProps => (
-        <Editor {...inputProps} value={props.value} onChange={props.onChange} />
-      )}
-    </Field>
+      <Field
+        height={entryLayoutPane === 'main' ? '100%' : undefined}
+        {...fieldProps}
+      >
+        {inputProps => (
+          <Editor
+            {...inputProps}
+            value={props.value}
+            onChange={props.onChange}
+          />
+        )}
+      </Field>
+    </MediaScopeProvider>
   );
 }
 

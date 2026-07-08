@@ -23,7 +23,11 @@ import l10nMessages from './l10n';
 import { useBaseCommit, useCurrentBranch } from './shell/data';
 import { PageRoot, PageHeader, PageBody } from './shell/page';
 import { ForkRepoDialog } from './fork-repo';
-import { FormForEntry, containerWidthForEntryLayout } from './entry-form';
+import {
+  EntryDirectoryProvider,
+  FormForEntry,
+  containerWidthForEntryLayout,
+} from './entry-form';
 import { notFound } from './not-found';
 import { delDraft, getDraft, setDraft } from './persistence';
 import { PresenceAvatars } from './presence';
@@ -342,6 +346,7 @@ function CreateItemLocal(props: {
   return (
     <CreateItemInner
       basePath={props.basePath}
+      entryDirectory={basePath}
       collection={props.collection}
       createResult={createResult}
       createItem={createItem}
@@ -388,6 +393,7 @@ function CreateItemCollab(props: {
   return (
     <CreateItemInner
       basePath={props.basePath}
+      entryDirectory={basePath}
       collection={props.collection}
       createResult={createResult}
       createItem={createItem}
@@ -412,6 +418,7 @@ function CreateItemCollab(props: {
 
 function CreateItemInner(props: {
   basePath: string;
+  entryDirectory: string;
   collection: string;
   createResult: ReturnType<typeof useUpsertItem>[0];
   createItem: ReturnType<typeof useUpsertItem>[1];
@@ -574,13 +581,15 @@ function CreateItemInner(props: {
           {createResult.kind === 'error' && (
             <Notice tone="critical">{createResult.error.message}</Notice>
           )}
-          <FormForEntry
-            previewProps={props.previewProps}
-            forceValidation={forceValidation}
-            entryLayout={collectionConfig.entryLayout}
-            formatInfo={formatInfo}
-            slugField={slugInfo}
-          />
+          <EntryDirectoryProvider value={props.entryDirectory}>
+            <FormForEntry
+              previewProps={props.previewProps}
+              forceValidation={forceValidation}
+              entryLayout={collectionConfig.entryLayout}
+              formatInfo={formatInfo}
+              slugField={slugInfo}
+            />
+          </EntryDirectoryProvider>
         </Flex>
       </PageRoot>
 

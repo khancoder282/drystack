@@ -1,1 +1,1 @@
-export const MEDIA_LIBRARY_DIRECTORY = 'src/assets';
+export const MEDIA_LIBRARY_DIRECTORY = 'assets';

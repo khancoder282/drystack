@@ -23,6 +23,8 @@ import { openMediaLibrary } from '../../../../../app/media-library/bridge';
 import { EditorState, NodeSelection } from 'prosemirror-state';
 import { useEditorDispatchCommand, useEditorSchema } from '../editor-view';
 import { Node } from 'prosemirror-model';
+import { imageAttrsForPick } from '../image-pick';
+import { useMediaScope } from '../media-scope';
 
 export function ImagePopover(props: {
   node: Node;
@@ -31,6 +33,8 @@ export function ImagePopover(props: {
 }) {
   let stringFormatter = useLocalizedStringFormatter(l10nMessages);
   const runCommand = useEditorDispatchCommand();
+  const schema = useEditorSchema();
+  const mediaScope = useMediaScope();
   const [dialogOpen, setDialogOpen] = useState(false);
   return (
     <>
@@ -46,12 +50,21 @@ export function ImagePopover(props: {
             <ActionButton
               prominence="low"
               onPress={async () => {
-                const picked = await openMediaLibrary({ accept: 'image' });
-                if (!picked) return;
+                const picked = await openMediaLibrary({
+                  accept: 'image',
+                  local: mediaScope ?? undefined,
+                });
+                if (!picked || !schema.config.image) return;
+                const { src, filename } = imageAttrsForPick(
+                  picked,
+                  schema.config.image.transformFilename,
+                  schema.config.supportsMediaLibraryReferences
+                );
                 runCommand((state, dispatch) => {
                   if (dispatch) {
                     const { tr } = state;
-                    tr.setNodeAttribute(props.pos, 'src', picked.content);
+                    tr.setNodeAttribute(props.pos, 'src', src);
+                    tr.setNodeAttribute(props.pos, 'filename', filename);
                     const newState = state.apply(tr);
                     tr.setSelection(
                       NodeSelection.create(newState.doc, props.pos)

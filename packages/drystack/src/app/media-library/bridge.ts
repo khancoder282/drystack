@@ -1,11 +1,29 @@
+// a scope for the entry-local tab in the media library dialog, e.g. the
+// directory a collection item's own sibling images are stored under
+export type MediaLibraryLocalScope = {
+  directory: string;
+  label: string;
+};
+
 export type MediaLibraryPick = {
   path: string;
   filename: string;
   content: Uint8Array;
+  // 'library' picks reference the shared, public directory (durable, reused
+  // across entries); 'local' picks are scoped to the current entry and are
+  // meant to be embedded directly into that entry's own content
+  source: 'library' | 'local';
 };
+
+// placeholder bytes for a media node that isn't embedding its content, but
+// instead referencing a file in the shared library directory by filename —
+// only meaningful where the caller has real bytes-lazy-resolution support
+// (see resolveMediaLibraryBytes); byteLength (not identity) is what's checked
+export const UNHYDRATED_MEDIA_BYTES = new Uint8Array(0);
 
 type Opener = (options?: {
   accept?: 'image' | 'any';
+  local?: MediaLibraryLocalScope;
 }) => Promise<MediaLibraryPick | undefined>;
 
 let currentOpener: Opener | null = null;
@@ -16,6 +34,7 @@ export function registerMediaLibraryOpener(opener: Opener | null) {
 
 export function openMediaLibrary(options?: {
   accept?: 'image' | 'any';
+  local?: MediaLibraryLocalScope;
 }): Promise<MediaLibraryPick | undefined> {
   if (!currentOpener) {
     // eslint-disable-next-line no-console

@@ -13,6 +13,8 @@ import { ToolbarButton } from './Toolbar';
 import { EditorConfig } from '../config';
 import { getSrcPrefix } from '../../image/getSrcPrefix';
 import { toSerialized } from './props-serialization';
+import { imageAttrsForPick } from './image-pick';
+import { useMediaScope } from './media-scope';
 
 export function getSrcPrefixForImageBlock(
   config: EditorConfig,
@@ -134,6 +136,7 @@ export function imageDropPlugin(schema: EditorSchema) {
   });
 }
 export function ImageToolbarButton() {
+  const mediaScope = useMediaScope();
   return (
     <TooltipTrigger>
       <ToolbarButton
@@ -141,16 +144,22 @@ export function ImageToolbarButton() {
         command={(_, dispatch, view) => {
           if (dispatch && view) {
             (async () => {
-              const picked = await openMediaLibrary({ accept: 'image' });
+              const picked = await openMediaLibrary({
+                accept: 'image',
+                local: mediaScope ?? undefined,
+              });
               const schema = getEditorSchema(view.state.schema);
               if (!picked || !schema.config.image) return;
+              const { src, filename } = imageAttrsForPick(
+                picked,
+                schema.config.image.transformFilename,
+                schema.config.supportsMediaLibraryReferences
+              );
               view.dispatch(
                 view.state.tr.replaceSelectionWith(
                   view.state.schema.nodes.image.createChecked({
-                    src: picked.content,
-                    filename: schema.config.image.transformFilename(
-                      picked.filename
-                    ),
+                    src,
+                    filename,
                   })
                 )
               );

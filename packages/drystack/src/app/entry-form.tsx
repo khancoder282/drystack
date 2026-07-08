@@ -47,6 +47,15 @@ export function useEntryLayoutSplitPaneContext() {
   return useContext(EntryLayoutSplitPaneContext);
 }
 
+// the repo directory the current entry's files live in (e.g. `posts/my-post`),
+// or `null` for singletons — used to scope the "this entry's images" tab in
+// the media library dialog. See MediaScopeProvider in the markdoc editor.
+const EntryDirectoryContext = createContext<string | null>(null);
+export const EntryDirectoryProvider = EntryDirectoryContext.Provider;
+export function useEntryDirectoryContext() {
+  return useContext(EntryDirectoryContext);
+}
+
 export function ResetEntryLayoutContext(props: { children: ReactNode }) {
   return (
     <EntryLayoutSplitPaneContext.Provider value={null}>

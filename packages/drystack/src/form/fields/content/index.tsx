@@ -26,7 +26,7 @@ export function content({
   };
 }): content.Field {
   let schema: undefined | EditorSchema;
-  const config = editorOptionsToConfig(options);
+  const config = editorOptionsToConfig(options, true);
   const getSchema = () => {
     if (!schema) {
       schema = createEditorSchema(config, {}, false);
