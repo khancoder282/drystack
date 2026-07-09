@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 
 import { ActionButton, Button } from '@keystar/ui/button';
+import { DialogContainer } from '@keystar/ui/dialog';
 import { Icon } from '@keystar/ui/icon';
 import { alertCircleIcon } from '@keystar/ui/icon/icons/alertCircleIcon';
 import { listXIcon } from '@keystar/ui/icon/icons/listXIcon';
@@ -17,6 +18,7 @@ import { searchXIcon } from '@keystar/ui/icon/icons/searchXIcon';
 import { diffIcon } from '@keystar/ui/icon/icons/diffIcon';
 import { plusSquareIcon } from '@keystar/ui/icon/icons/plusSquareIcon';
 import { dotSquareIcon } from '@keystar/ui/icon/icons/dotSquareIcon';
+import { Flex } from '@keystar/ui/layout';
 import { TextLink } from '@keystar/ui/link';
 import { ProgressCircle } from '@keystar/ui/progress';
 import { SearchField } from '@keystar/ui/search-field';
@@ -39,6 +41,19 @@ import { Heading, Text } from '@keystar/ui/typography';
 
 import { Config } from '../config';
 import { sortBy } from './collection-sort';
+import { renderColumnCell } from './collection-table/cells';
+import {
+  ColumnDescriptor,
+  columnValueToSearchText,
+  getDisplayKind,
+  redistributeColumnWidths,
+} from './collection-table/column-model';
+import { ColumnsMenu } from './collection-table/ColumnsMenu';
+import {
+  PendingCheckboxEdit,
+  QuickEditCheckboxDialog,
+} from './collection-table/QuickEditCheckboxDialog';
+import { useCollectionViewState } from './collection-table/useCollectionViewState';
 import l10nMessages from './l10n';
 import { useRouter } from './router';
 import { EmptyState } from './shell/empty-state';
@@ -98,6 +113,66 @@ export function CollectionPage(props: CollectionPageProps) {
 
   let debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
+  // every schema field becomes a column automatically — the designated slug
+  // field always comes first and is rendered as the "Name" column (see
+  // getDisplayKind in collection-table/column-model.ts)
+  const columnDescriptors = useMemo<ColumnDescriptor[]>(() => {
+    const nameKey = collectionConfig.slugField;
+    const keys = [
+      nameKey,
+      ...Object.keys(collectionConfig.schema).filter(key => key !== nameKey),
+    ];
+    return keys.map(key => {
+      const schema = collectionConfig.schema[key];
+      const label = ('label' in schema && schema.label) || key;
+      return {
+        key,
+        label,
+        displayKind: getDisplayKind(schema, key, nameKey),
+        schema,
+      };
+    });
+  }, [collectionConfig]);
+
+  // image/content fields tend to be heavy (media previews, long text) and
+  // clutter the table, so they start out hidden until the user opts in
+  const defaultHiddenColumns = useMemo(
+    () =>
+      columnDescriptors
+        .filter(c => c.displayKind === 'image' || c.displayKind === 'content')
+        .map(c => c.key),
+    [columnDescriptors]
+  );
+
+  const {
+    hiddenColumns,
+    columnWidths,
+    setColumnWidths,
+    setHiddenColumnsAndWidths,
+  } = useCollectionViewState(collection, defaultHiddenColumns);
+
+  const visibleColumnDescriptors = useMemo(
+    () =>
+      columnDescriptors.filter(
+        c => c.displayKind === 'name' || !hiddenColumns.has(c.key)
+      ),
+    [columnDescriptors, hiddenColumns]
+  );
+
+  const handleHiddenColumnsChange = useCallback(
+    (hidden: ReadonlySet<string> | string[]) => {
+      const hiddenSet = new Set(hidden);
+      const visibleKeys = columnDescriptors
+        .filter(c => c.displayKind === 'name' || !hiddenSet.has(c.key))
+        .map(c => c.key);
+      setHiddenColumnsAndWidths(
+        hiddenSet,
+        redistributeColumnWidths(columnWidths, visibleKeys)
+      );
+    },
+    [columnDescriptors, columnWidths, setHiddenColumnsAndWidths]
+  );
+
   return (
     <PageRoot containerWidth={containerWidth}>
       <CollectionPageHeader
@@ -105,10 +180,21 @@ export function CollectionPage(props: CollectionPageProps) {
         createHref={`${props.basePath}/collection/${encodeURIComponent(
           props.collection
         )}/create`}
+      />
+      <CollectionToolbar
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTermFromForm}
+        columns={columnDescriptors}
+        hiddenColumns={hiddenColumns}
+        onHiddenColumnsChange={handleHiddenColumnsChange}
       />
-      <CollectionPageContent searchTerm={debouncedSearchTerm} {...props} />
+      <CollectionPageContent
+        searchTerm={debouncedSearchTerm}
+        columnDescriptors={visibleColumnDescriptors}
+        columnWidths={columnWidths}
+        onColumnWidthsChange={setColumnWidths}
+        {...props}
+      />
     </PageRoot>
   );
 }
@@ -116,10 +202,29 @@ export function CollectionPage(props: CollectionPageProps) {
 function CollectionPageHeader(props: {
   createHref: string;
   collectionLabel: string;
-  searchTerm: string;
-  onSearchTermChange: (value: string) => void;
 }) {
   const { collectionLabel, createHref } = props;
+  const stringFormatter = useLocalizedStringFormatter(l10nMessages);
+
+  return (
+    <PageHeader>
+      <Heading elementType="h1" id="page-title" size="small" flex minWidth={0}>
+        {collectionLabel}
+      </Heading>
+      <Button marginStart="auto" prominence="high" href={createHref}>
+        {stringFormatter.format('add')}
+      </Button>
+    </PageHeader>
+  );
+}
+
+function CollectionToolbar(props: {
+  searchTerm: string;
+  onSearchTermChange: (value: string) => void;
+  columns: ColumnDescriptor[];
+  hiddenColumns: ReadonlySet<string>;
+  onHiddenColumnsChange: (hidden: Set<string>) => void;
+}) {
   const stringFormatter = useLocalizedStringFormatter(l10nMessages);
   const isAboveMobile = useMediaQuery(breakpointQueries.above.mobile);
   const [searchVisible, setSearchVisible] = useState(isAboveMobile);
@@ -149,10 +254,20 @@ function CollectionPageHeader(props: {
   }, []);
 
   return (
-    <PageHeader>
-      <Heading elementType="h1" id="page-title" size="small" flex minWidth={0}>
-        {collectionLabel}
-      </Heading>
+    <Flex
+      alignItems="center"
+      gap="regular"
+      paddingTop={{ tablet: 'large' }}
+      UNSAFE_className={css({
+        marginInline: tokenSchema.size.space.regular,
+        [breakpointQueries.above.mobile]: {
+          marginInline: `calc(${tokenSchema.size.space.xlarge} - ${tokenSchema.size.space.medium})`,
+        },
+        [breakpointQueries.above.tablet]: {
+          marginInline: `calc(${tokenSchema.size.space.xxlarge} - ${tokenSchema.size.space.medium})`,
+        },
+      })}
+    >
       <div
         role="search"
         style={{
@@ -166,7 +281,6 @@ function CollectionPageHeader(props: {
           onClear={() => {
             props.onSearchTermChange('');
             if (!isAboveMobile) {
-              // the timeout ensures that the "add" button isn't pressed
               setTimeout(() => {
                 setSearchVisible(false);
               }, 250);
@@ -203,19 +317,21 @@ function CollectionPageHeader(props: {
       >
         <Icon src={searchIcon} />
       </ActionButton>
-      <Button
-        marginStart="auto"
-        prominence="high"
-        href={createHref}
-        isHidden={searchVisible ? { below: 'tablet' } : undefined}
-      >
-        {stringFormatter.format('add')}
-      </Button>
-    </PageHeader>
+      <ColumnsMenu
+        columns={props.columns}
+        hiddenColumns={props.hiddenColumns}
+        onHiddenColumnsChange={props.onHiddenColumnsChange}
+      />
+    </Flex>
   );
 }
 
-type CollectionPageContentProps = CollectionPageProps & { searchTerm: string };
+type CollectionPageContentProps = CollectionPageProps & {
+  searchTerm: string;
+  columnDescriptors: ColumnDescriptor[];
+  columnWidths: Record<string, string> | undefined;
+  onColumnWidthsChange: (widths: Record<string, string>) => void;
+};
 function CollectionPageContent(props: CollectionPageContentProps) {
   const trees = useTree();
 
@@ -278,7 +394,6 @@ function CollectionPageContent(props: CollectionPageContentProps) {
   return <CollectionTable {...props} trees={trees.merged.data} />;
 }
 
-const SLUG = '@@slug';
 const STATUS = '@@status';
 
 function CollectionTable(
@@ -289,14 +404,15 @@ function CollectionTable(
     };
   }
 ) {
-  let { searchTerm } = props;
+  let { searchTerm, columnDescriptors } = props;
 
   const repoInfo = useRepoInfo();
   const currentBranch = useCurrentBranch();
   let isLocalMode = isLocalConfig(props.config);
   let router = useRouter();
+  const collection = props.config.collections![props.collection]!;
   let [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: SLUG,
+    column: collection.slugField,
     direction: 'ascending',
   });
   let hideStatusColumn =
@@ -304,7 +420,8 @@ function CollectionTable(
 
   const baseCommit = useBaseCommit();
 
-  const collection = props.config.collections![props.collection]!;
+  const [pendingCheckboxEdit, setPendingCheckboxEdit] =
+    useState<PendingCheckboxEdit | null>(null);
 
   const entriesWithStatus = useMemo(() => {
     const defaultEntries = new Map(
@@ -333,9 +450,6 @@ function CollectionTable(
 
   const mainFiles = useData(
     useCallback(async () => {
-      if (!collection.columns || !Object.keys(collection.columns).length) {
-        return undefined;
-      }
       const formatInfo = getCollectionFormat(props.config, props.collection);
       const entries = await Promise.all(
         entriesWithStatus.map(async entry => {
@@ -371,13 +485,14 @@ function CollectionTable(
             [],
             [],
             (schema, value, path) => {
-              if (schema.formKind === 'asset') {
+              if (schema.formKind === 'asset' || schema.formKind === 'assets') {
+                // cheap: fields.content()'s reader just returns the raw
+                // markdown string, no document parsing — see content/index.tsx
                 return schema.reader.parse(value);
               }
-              if (
-                schema.formKind === 'content' ||
-                schema.formKind === 'assets'
-              ) {
+              if (schema.formKind === 'content') {
+                // deprecated markdoc field; needs asset bytes we don't fetch
+                // for the table listing
                 return;
               }
               if (path.length === 1 && slug !== undefined) {
@@ -431,21 +546,30 @@ function CollectionTable(
   }, [entriesWithStatus, mainFiles]);
 
   const filteredItems = useMemo(() => {
-    return entriesWithData.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [entriesWithData, searchTerm]);
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return entriesWithData;
+    return entriesWithData.filter(item => {
+      const row = item.data ?? {};
+      const haystack = columnDescriptors
+        .map(descriptor =>
+          columnValueToSearchText(descriptor, row[descriptor.key], item.name)
+        )
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [entriesWithData, searchTerm, columnDescriptors]);
   const sortedItems = useMemo(() => {
     return [...filteredItems].sort((a, b) => {
       const readCol = (
         row: typeof a,
         other: Record<string, unknown> | undefined
       ) => {
-        if (sortDescriptor.column === SLUG) {
-          return collection.parseSlugForSort?.(row.name) ?? row.name;
-        }
         if (sortDescriptor.column === STATUS) {
           return row.status;
+        }
+        if (sortDescriptor.column === collection.slugField) {
+          return collection.parseSlugForSort?.(row.name) ?? row.name;
         }
         return other?.[sortDescriptor.column!] ?? row.name;
       };
@@ -464,146 +588,186 @@ function CollectionTable(
     sortDescriptor.direction,
   ]);
 
-  const columnKeys = useMemo(
-    () => (collection.columns ? Object.keys(collection.columns) : []),
-    [collection]
-  );
-
   const columns = useMemo(() => {
-    if (columnKeys.length) {
-      return [
-        ...(hideStatusColumn
-          ? []
-          : [{ name: 'Status', key: STATUS, minWidth: 32, width: 32 }]),
-        ...columnKeys.map(column => {
-          const schema = collection.schema[column];
-          return {
-            name: ('label' in schema && schema.label) || column,
-            key: column,
-          };
-        }),
-      ];
+    return [
+      ...(hideStatusColumn
+        ? []
+        : [{ name: 'Status', key: STATUS, minWidth: 32, width: 32 }]),
+      ...columnDescriptors.map(c => ({
+        name: c.label,
+        key: c.key,
+        // `defaultWidth` (not `width`) keeps these columns uncontrolled from
+        // react-stately's perspective — react-stately's TableColumnLayout
+        // only tracks live drag state for uncontrolled columns; a controlled
+        // `width` freezes the column at that prop value during resize since
+        // we only feed the result back on resize end, not on every move, so
+        // dragging any already-resized column wouldn't visibly move at all
+        defaultWidth: props.columnWidths?.[c.key],
+        allowsResizing: true,
+      })),
+    ];
+  }, [columnDescriptors, hideStatusColumn, props.columnWidths]);
+
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+
+  // `onResizeEnd`'s width map only reliably reports the columns directly
+  // involved in the drag, not every column — so instead of trusting its
+  // values we measure the actual rendered header widths and derive
+  // percentages of the whole table from those
+  const commitColumnWidthsFromDom = useCallback(() => {
+    const container = tableWrapperRef.current;
+    if (!container) return;
+    const headers = Array.from(
+      container.querySelectorAll<HTMLElement>('[role="columnheader"]')
+    );
+    let total = 0;
+    const measured: { key: string; px: number }[] = [];
+    headers.forEach((el, i) => {
+      const col = columns[i];
+      if (!col || col.key === STATUS) return;
+      const px = el.getBoundingClientRect().width;
+      measured.push({ key: String(col.key), px });
+      total += px;
+    });
+    if (total <= 0) return;
+    const next: Record<string, string> = {};
+    for (const { key, px } of measured) {
+      // the table's width parser only accepts whole-number percentages
+      // (e.g. "24%") — a decimal like "24.50%" is silently rejected and
+      // falls back to an equal-fr layout for every column
+      next[key] = `${Math.round((px / total) * 100)}%`;
     }
-    return hideStatusColumn
-      ? [{ name: 'Name', key: SLUG }]
-      : [
-          { name: 'Status', key: STATUS, minWidth: 32, width: 32 },
-          { name: 'Name', key: SLUG },
-        ];
-  }, [columnKeys, hideStatusColumn]);
+    props.onColumnWidthsChange(next);
+  }, [columns, props]);
 
   return (
-    <TableView
-      aria-labelledby="page-title"
-      selectionMode="none"
-      onSortChange={setSortDescriptor}
-      sortDescriptor={sortDescriptor}
-      density="spacious"
-      overflowMode="truncate"
-      prominence="low"
-      onAction={key => {
-        router.push(
-          getItemPath(
-            props.basePath,
-            props.collection,
-            key.toString().slice('key:'.length)
-          )
-        );
-      }}
-      renderEmptyState={() => (
-        <EmptyState
-          icon={searchXIcon}
-          title="No results"
-          message={`No items matching "${searchTerm}" were found.`}
-        />
-      )}
-      flex
-      marginTop={{ tablet: 'large' }}
-      marginBottom={{ mobile: 'regular', tablet: 'xlarge' }}
-      UNSAFE_className={css({
-        marginInline: tokenSchema.size.space.regular,
-        [breakpointQueries.above.mobile]: {
-          marginInline: `calc(${tokenSchema.size.space.xlarge} - ${tokenSchema.size.space.medium})`,
-        },
-        [breakpointQueries.above.tablet]: {
-          marginInline: `calc(${tokenSchema.size.space.xxlarge} - ${tokenSchema.size.space.medium})`,
-        },
+    <>
+      <div ref={tableWrapperRef} className={css({ display: 'contents' })}>
+      <TableView
+        aria-labelledby="page-title"
+        selectionMode="none"
+        onSortChange={setSortDescriptor}
+        sortDescriptor={sortDescriptor}
+        density="spacious"
+        overflowMode="wrap"
+        prominence="low"
+        onResizeEnd={commitColumnWidthsFromDom}
+        onAction={key => {
+          router.push(
+            getItemPath(
+              props.basePath,
+              props.collection,
+              key.toString().slice('key:'.length)
+            )
+          );
+        }}
+        renderEmptyState={() => (
+          <EmptyState
+            icon={searchXIcon}
+            title="No results"
+            message={`No items matching "${searchTerm}" were found.`}
+          />
+        )}
+        flex
+        marginTop={{ tablet: 'large' }}
+        marginBottom={{ mobile: 'regular', tablet: 'xlarge' }}
+        UNSAFE_className={css({
+          marginInline: tokenSchema.size.space.regular,
+          [breakpointQueries.above.mobile]: {
+            marginInline: `calc(${tokenSchema.size.space.xlarge} - ${tokenSchema.size.space.medium})`,
+          },
+          [breakpointQueries.above.tablet]: {
+            marginInline: `calc(${tokenSchema.size.space.xxlarge} - ${tokenSchema.size.space.medium})`,
+          },
 
-        '[role=rowheader]': {
-          cursor: 'pointer',
-        },
-      })}
-    >
-      <TableHeader columns={columns}>
-        {({ name, key, ...options }) =>
-          key === STATUS ? (
-            <Column key={key} isRowHeader allowsSorting {...options}>
-              <Icon aria-label="Status" src={diffIcon} />
-            </Column>
-          ) : (
-            <Column key={key} isRowHeader allowsSorting {...options}>
-              {name}
-            </Column>
-          )
-        }
-      </TableHeader>
-      <TableBody items={sortedItems}>
-        {item => {
-          const statusCell = (
-            <Cell key={STATUS + item.name} textValue={item.status}>
-              {item.status === 'Added' ? (
-                <Icon color="positive" src={plusSquareIcon} />
-              ) : item.status === 'Changed' ? (
-                <Icon color="accent" src={dotSquareIcon} />
-              ) : null}
-            </Cell>
-          );
-          const nameCell = (
-            <Cell key={SLUG + item.name} textValue={item.name as string}>
-              <Text weight="medium">{item.name as string}</Text>
-            </Cell>
-          );
-          if (columnKeys.length) {
+          '[role=rowheader]': {
+            cursor: 'pointer',
+          },
+          '[role=gridcell], [role=rowheader]': {
+            display: 'flex',
+            alignItems: 'center',
+          },
+        })}
+      >
+        <TableHeader columns={columns}>
+          {({ name, key, ...options }) =>
+            key === STATUS ? (
+              <Column key={key} isRowHeader allowsSorting {...options}>
+                <Icon aria-label="Status" src={diffIcon} />
+              </Column>
+            ) : (
+              <Column key={key} isRowHeader allowsSorting {...options}>
+                {name}
+              </Column>
+            )
+          }
+        </TableHeader>
+        <TableBody items={sortedItems}>
+          {item => {
+            const statusCell = (
+              <Cell key={STATUS + item.name} textValue={item.status}>
+                {item.status === 'Added' ? (
+                  <Icon color="positive" src={plusSquareIcon} />
+                ) : item.status === 'Changed' ? (
+                  <Icon color="accent" src={dotSquareIcon} />
+                ) : null}
+              </Cell>
+            );
             const row = item.data ?? {};
             return (
               <Row key={'key:' + item.name}>
                 {[
                   ...(hideStatusColumn ? [] : [statusCell]),
-                  ...columnKeys.map(column => {
-                    const val = row[column];
-                    const render = collection.columns![column]!;
-                    const rendered = render(val, row);
+                  ...columnDescriptors.map(descriptor => {
+                    const value = row[descriptor.key];
                     return (
                       <Cell
-                        key={column + item.name}
-                        textValue={val == null ? '' : val + ''}
+                        key={descriptor.key + item.name}
+                        textValue={cellTextValue(descriptor, value, item.name)}
                       >
-                        <Text weight="medium">
-                          {typeof rendered === 'string' ? (
-                            <span dangerouslySetInnerHTML={{ __html: rendered }} />
-                          ) : (
-                            rendered
-                          )}
-                        </Text>
+                        {renderColumnCell(descriptor, value, item.name, {
+                          onRequestCheckboxEdit: setPendingCheckboxEdit,
+                        })}
                       </Cell>
                     );
                   }),
                 ]}
               </Row>
             );
-          }
-          return hideStatusColumn ? (
-            <Row key={'key:' + item.name}>{nameCell}</Row>
-          ) : (
-            <Row key={'key:' + item.name}>
-              {statusCell}
-              {nameCell}
-            </Row>
-          );
-        }}
-      </TableBody>
-    </TableView>
+          }}
+        </TableBody>
+      </TableView>
+      </div>
+      <DialogContainer onDismiss={() => setPendingCheckboxEdit(null)}>
+        {pendingCheckboxEdit && (
+          <QuickEditCheckboxDialog
+            config={props.config}
+            collectionKey={props.collection}
+            schema={collection.schema}
+            slugField={collection.slugField}
+            edit={pendingCheckboxEdit}
+            onDone={() => setPendingCheckboxEdit(null)}
+          />
+        )}
+      </DialogContainer>
+    </>
   );
+}
+
+function cellTextValue(
+  descriptor: ColumnDescriptor,
+  value: unknown,
+  itemSlug: string
+): string {
+  if (descriptor.displayKind === 'name') {
+    return typeof value === 'string' && value ? value : itemSlug;
+  }
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (Array.isArray(value)) return value.join(', ');
+  return '';
 }
 
 function getItemPath(

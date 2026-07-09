@@ -23,6 +23,7 @@ export function relationship<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'relationship',
     Input(props) {
       return (
         <RelationshipInput

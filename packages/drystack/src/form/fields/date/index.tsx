@@ -24,6 +24,7 @@ export function date<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'date',
     Input(props) {
       return (
         <DateFieldInput

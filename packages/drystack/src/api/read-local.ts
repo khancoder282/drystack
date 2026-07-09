@@ -121,7 +121,7 @@ export function getAllowedDirectories(config: Config) {
         fields.object(collectionConfig.schema),
         getCollectionPath(config, collection),
         undefined,
-        { data: 'yaml', contentField: undefined, dataLocation: 'index' }
+        { contentField: undefined, dataLocation: 'index' }
       )
     );
     if (collectionConfig.template) {

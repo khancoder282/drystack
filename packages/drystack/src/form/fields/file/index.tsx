@@ -25,6 +25,7 @@ export function file<IsRequired extends boolean | undefined>({
     string | (IsRequired extends true ? never : null)
   >({
     label,
+    columnKind: 'file',
     Input(props) {
       return (
         <FileFieldInput

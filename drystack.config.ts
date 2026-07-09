@@ -28,11 +28,6 @@ export default config({
       label: "Posts",
       slugField: "title",
       entryLayout: "content",
-      // columns: {
-      //   title: (value) => value,
-      //   cover: (value) => (value ? value : "No cover"),
-      //   description: (value) => value,
-      // },
       schema: {
         title: fields.slug({ name: { label: "Title" } }),
         description: fields.text({ label: "Description", validation: {} }),

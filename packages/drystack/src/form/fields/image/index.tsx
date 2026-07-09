@@ -25,6 +25,7 @@ export function image<IsRequired extends boolean | undefined>({
     string | (IsRequired extends true ? never : null)
   >({
     label,
+    columnKind: 'image',
     Input(props) {
       return (
         <ImageFieldInput

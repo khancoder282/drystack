@@ -24,6 +24,7 @@ export function url<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'url',
     Input(props) {
       return (
         <UrlFieldInput

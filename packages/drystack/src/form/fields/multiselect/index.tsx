@@ -22,6 +22,7 @@ export function multiselect<
   const field: BasicFormField<readonly Option['value'][]> =
     basicFormFieldWithSimpleReaderParse({
       label,
+      columnKind: 'multiselect',
       Input(props) {
         return (
           <MultiselectFieldInput

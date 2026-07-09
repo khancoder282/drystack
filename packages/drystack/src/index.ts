@@ -9,7 +9,6 @@ export type {
   CloudConfig,
   Collection,
   Config,
-  DataFormat,
   EntryLayout,
   Format,
   GitHubConfig,

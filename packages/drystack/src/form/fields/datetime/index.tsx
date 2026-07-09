@@ -24,6 +24,7 @@ export function datetime<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'datetime',
     Input(props) {
       return (
         <DatetimeFieldInput

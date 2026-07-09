@@ -31,6 +31,7 @@ export function number<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'number',
     Input(props) {
       return (
         <NumberFieldInput

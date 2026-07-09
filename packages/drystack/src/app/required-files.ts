@@ -29,11 +29,10 @@ export function loadDataFile(
     contents: Uint8Array;
   };
 } {
-  const parse = formatInfo.data === 'json' ? JSON.parse : load;
   if (!formatInfo.contentField) {
     const dataFile = textDecoder.decode(data);
     return {
-      loaded: parse(dataFile),
+      loaded: load(dataFile) as JsonYamlValue,
     };
   }
   const res = splitFrontmatter(data);
@@ -41,7 +40,7 @@ export function loadDataFile(
     throw new Error('Frontmatter not found');
   }
   return {
-    loaded: res === null ? {} : parse(res.frontmatter),
+    loaded: res === null ? {} : (load(res.frontmatter) as JsonYamlValue),
     extraFakeFile: {
       path: `${formatInfo.contentField.path.join('/')}${
         formatInfo.contentField.contentExtension

@@ -1,4 +1,4 @@
-import { Config, DataFormat, Glob } from '../config';
+import { Config, Glob } from '../config';
 import { ComponentSchema } from '../form/api';
 import { memoize } from './memoize';
 
@@ -80,7 +80,7 @@ export function getSingletonPath(config: Config, singleton: string) {
 export function getDataFileExtension(formatInfo: FormatInfo) {
   return formatInfo.contentField
     ? formatInfo.contentField.contentExtension
-    : '.' + formatInfo.data;
+    : '.yaml';
 }
 
 const getFormatInfo = memoize(_getFormatInfo);
@@ -97,16 +97,9 @@ function _getFormatInfo(
       ? getConfiguredCollectionPath(config, key)
       : collectionOrSingleton.path ?? `${key}/`;
   const dataLocation = path.endsWith('/') ? 'index' : 'outer';
-  const { schema, format = 'yaml' } = collectionOrSingleton;
-  if (typeof format === 'string') {
-    return {
-      dataLocation,
-      contentField: undefined,
-      data: format,
-    };
-  }
+  const { schema, format } = collectionOrSingleton;
   let contentField: FormatInfo['contentField'];
-  if (format.contentField) {
+  if (format?.contentField) {
     let field: ComponentSchema = { kind: 'object' as const, fields: schema };
     let path = Array.isArray(format.contentField)
       ? format.contentField
@@ -125,7 +118,6 @@ function _getFormatInfo(
     contentField = { path, contentExtension };
   }
   return {
-    data: format.data ?? 'yaml',
     contentField,
     dataLocation,
   };
@@ -196,7 +188,6 @@ function getContentExtension(
 }
 
 export type FormatInfo = {
-  data: DataFormat;
   contentField:
     | {
         path: string[];

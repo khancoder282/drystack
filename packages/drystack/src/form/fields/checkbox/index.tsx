@@ -14,6 +14,7 @@ export function checkbox({
 }): BasicFormField<boolean> {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'checkbox',
     Input(props) {
       return (
         <CheckboxFieldInput

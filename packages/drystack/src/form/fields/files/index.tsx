@@ -22,6 +22,7 @@ export function files<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse<string[], string[]>({
     label,
+    columnKind: 'files',
     Input(props) {
       return (
         <FilesFieldInput

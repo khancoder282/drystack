@@ -1,6 +1,7 @@
 import { ReactElement } from 'react';
 import {
   BasicFormField,
+  ColumnKind,
   FormFieldInputProps,
   FormFieldStoredValue,
 } from '../api';
@@ -33,9 +34,11 @@ export function basicFormFieldWithSimpleReaderParse<
   serialize(value: ParsedValue): { value: FormFieldStoredValue };
   validate(value: ParsedValue): ValidatedValue;
   label: string;
+  columnKind?: ColumnKind;
 }): BasicFormField<ParsedValue, ValidatedValue, ValidatedValue> {
   return {
     kind: 'form',
+    columnKind: config.columnKind,
     Input: config.Input,
     defaultValue: config.defaultValue,
     parse: config.parse,

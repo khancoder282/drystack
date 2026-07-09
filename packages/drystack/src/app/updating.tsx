@@ -70,12 +70,7 @@ export function serializeEntryToFiles(args: {
     args.slug?.value,
     true
   );
-  const dataFormat = args.format.data;
-  let dataContent = textEncoder.encode(
-    dataFormat === 'json'
-      ? JSON.stringify(stateWithExtraFilesRemoved, null, 2) + '\n'
-      : dump(stateWithExtraFilesRemoved)
-  );
+  let dataContent = textEncoder.encode(dump(stateWithExtraFilesRemoved));
 
   if (args.format.contentField) {
     const filename = `${args.format.contentField.path.join('/')}${

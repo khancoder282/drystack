@@ -25,6 +25,7 @@ export function select<const Option extends { label: string; value: string }>({
   const field: BasicFormField<Option['value']> =
     basicFormFieldWithSimpleReaderParse({
       label,
+      columnKind: 'select',
       Input(props) {
         return (
           <SelectFieldInput

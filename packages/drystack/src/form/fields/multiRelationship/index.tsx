@@ -18,6 +18,7 @@ export function multiRelationship({
 }): BasicFormField<string[]> {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'multiRelationship',
     Input(props) {
       return (
         <MultiRelationshipInput

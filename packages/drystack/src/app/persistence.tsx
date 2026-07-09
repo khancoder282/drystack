@@ -97,3 +97,37 @@ export function getDraft(key: Key): Promise<unknown> {
 export async function clearDrafts() {
   await clear(getStore());
 }
+
+// per-collection entries-table column visibility/widths — kept in its own
+// store since, unlike drafts, it should never be cleared alongside
+// in-progress entry edits
+let viewsStore: UseStore;
+
+function getViewsStore() {
+  if (!viewsStore) {
+    viewsStore = createStore('drystack', 'collection-views');
+  }
+  return viewsStore;
+}
+
+// `hiddenColumns` (rather than a visible-columns allowlist) so newly added
+// schema fields show up automatically instead of being silently hidden.
+// `columnWidths` are percentage strings (e.g. "24%") so they scale with the
+// table instead of pinning a pixel width.
+export type CollectionViewState = {
+  hiddenColumns: string[];
+  columnWidths?: Record<string, string>;
+};
+
+export function getCollectionViewState(
+  collection: string
+): Promise<CollectionViewState | undefined> {
+  return get(collection, getViewsStore());
+}
+
+export function setCollectionViewState(
+  collection: string,
+  val: CollectionViewState
+) {
+  return set(collection, val, getViewsStore());
+}

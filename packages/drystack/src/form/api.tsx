@@ -28,6 +28,25 @@ type JsonYamlValueWithoutNull = JsonYamlValue & {};
 
 export type FormFieldStoredValue = JsonYamlValueWithoutNull | undefined;
 
+// a hint for how a basic form field's value should be presented as a
+// collection-table column — most basic fields share `kind: 'form',
+// formKind: undefined`, so this is the only thing that lets the table tell a
+// checkbox apart from an image path apart from a plain string, etc.
+export type ColumnKind =
+  | 'text'
+  | 'checkbox'
+  | 'image'
+  | 'file'
+  | 'url'
+  | 'relationship'
+  | 'multiRelationship'
+  | 'date'
+  | 'datetime'
+  | 'number'
+  | 'select'
+  | 'multiselect'
+  | 'files';
+
 export type BasicFormField<
   ParsedValue extends {} | null,
   ValidatedValue extends ParsedValue = ParsedValue,
@@ -35,6 +54,7 @@ export type BasicFormField<
 > = {
   kind: 'form';
   formKind?: undefined;
+  columnKind?: ColumnKind;
   Input(props: FormFieldInputProps<ParsedValue>): ReactElement | null;
   defaultValue(): ParsedValue;
   parse(value: FormFieldStoredValue): ParsedValue;

@@ -24,6 +24,7 @@ export function integer<IsRequired extends boolean | undefined>({
 > {
   return basicFormFieldWithSimpleReaderParse({
     label,
+    columnKind: 'number',
     Input(props) {
       return (
         <IntegerFieldInput
