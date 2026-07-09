@@ -1,0 +1,1 @@
+Thêm tính năng tại các thẻ như p, h*, li, table khi hover vào thì có button float ở bên trái có thể drap-drop di chuyển vị trí giữa các block với nhau (chú ý xử lý ol, li, ul cho phù hợp UX nhất)

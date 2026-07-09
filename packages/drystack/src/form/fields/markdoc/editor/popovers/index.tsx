@@ -662,6 +662,9 @@ function PopoverInner(props: {
 
   const reference = useEditorReferenceElement(from, to);
   const editorViewRef = useEditorViewRef();
+  const isImage =
+    props.decoration.kind === 'node' &&
+    props.decoration.node.type.name === 'image';
 
   return (
     reference && (
@@ -677,6 +680,11 @@ function PopoverInner(props: {
         placement="bottom"
         portal={false}
         reference={reference}
+        // the image node view's floated container can otherwise stack
+        // in front of the popover (both are positioned, and float order
+        // isn't the same as DOM/paint order here), swallowing clicks on
+        // the toolbar
+        UNSAFE_style={isImage ? { zIndex: 2 } : undefined}
       >
         {props.decoration.kind === 'node' ? (
           <props.decoration.component
