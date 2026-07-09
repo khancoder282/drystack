@@ -76,7 +76,7 @@ export function slug(_args: {
         pattern: _args.name.validation?.pattern,
         length: {
           min: Math.max(
-            _args.name.validation?.isRequired ?? true ? 1 : 0,
+            (_args.name.validation?.isRequired ?? true) ? 1 : 0,
             _args.name.validation?.length?.min ?? 0
           ),
           max: _args.name.validation?.length?.max,

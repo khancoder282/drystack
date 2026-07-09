@@ -10,7 +10,7 @@ import { Content } from '@keystar/ui/slots';
 import { TextField } from '@keystar/ui/text-field';
 import { Heading, Text } from '@keystar/ui/typography';
 import { useLocalizedStringFormatter } from '@react-aria/i18n';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { clientSideValidateProp } from '../../../../errors';
 import { FormValueContentFromPreviewProps } from '../../../../form-from-preview';
 import { createGetPreviewProps } from '../../../../preview-props';
@@ -274,24 +274,29 @@ function ImageDialog(props: {
   // can keep it locked even before either field has ever been committed
   const objectUrl = useImageObjectUrl(props.node);
   const naturalRatioRef = useRef<number | null>(null);
-  const ratioForField = () =>
-    naturalRatioRef.current ??
-    (width && height ? width / height : null);
 
-  const onWidthField = (value: number) => {
+  const ratioForField = useCallback(
+    () =>
+      naturalRatioRef.current ??
+      (width && height ? width / height : null),
+    [width, height]
+  );
+
+  const onWidthField = useCallback((value: number) => {
     if (!Number.isFinite(value) || value <= 0) return;
     const w = Math.round(value);
     setWidth(w);
     const ratio = ratioForField();
     if (lockAspectRatio && ratio) setHeight(Math.round(w / ratio));
-  };
-  const onHeightField = (value: number) => {
+  }, [lockAspectRatio, ratioForField]);
+
+  const onHeightField = useCallback((value: number) => {
     if (!Number.isFinite(value) || value <= 0) return;
     const h = Math.round(value);
     setHeight(h);
     const ratio = ratioForField();
     if (lockAspectRatio && ratio) setWidth(Math.round(h * ratio));
-  };
+  }, [lockAspectRatio, ratioForField]);
 
   let { dismiss } = useDialogContainer();
   let stringFormatter = useLocalizedStringFormatter(l10nMessages);

@@ -478,7 +478,7 @@ function CollectionTable(
         ...columnKeys.map(column => {
           const schema = collection.schema[column];
           return {
-            name: (schema && 'label' in schema && schema.label) || column,
+            name: ('label' in schema && schema.label) || column,
             key: column,
           };
         }),
@@ -490,7 +490,7 @@ function CollectionTable(
           { name: 'Status', key: STATUS, minWidth: 32, width: 32 },
           { name: 'Name', key: SLUG },
         ];
-  }, [collection, columnKeys, hideStatusColumn]);
+  }, [columnKeys, hideStatusColumn]);
 
   return (
     <TableView
