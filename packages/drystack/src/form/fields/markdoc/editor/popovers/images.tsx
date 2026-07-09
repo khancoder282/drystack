@@ -282,21 +282,43 @@ function ImageDialog(props: {
     [width, height]
   );
 
+  const syncHeightFromWidth = useCallback(
+    (w: number) => {
+      const ratio = ratioForField();
+      if (ratio) setHeight(Math.round(w / ratio));
+    },
+    [ratioForField]
+  );
+
+  const syncWidthFromHeight = useCallback(
+    (h: number) => {
+      const ratio = ratioForField();
+      if (ratio) setWidth(Math.round(h * ratio));
+    },
+    [ratioForField]
+  );
+
   const onWidthField = useCallback((value: number) => {
     if (!Number.isFinite(value) || value <= 0) return;
     const w = Math.round(value);
     setWidth(w);
-    const ratio = ratioForField();
-    if (lockAspectRatio && ratio) setHeight(Math.round(w / ratio));
-  }, [lockAspectRatio, ratioForField]);
+    if (lockAspectRatio) syncHeightFromWidth(w);
+  }, [lockAspectRatio, syncHeightFromWidth]);
 
   const onHeightField = useCallback((value: number) => {
     if (!Number.isFinite(value) || value <= 0) return;
     const h = Math.round(value);
     setHeight(h);
-    const ratio = ratioForField();
-    if (lockAspectRatio && ratio) setWidth(Math.round(h * ratio));
-  }, [lockAspectRatio, ratioForField]);
+    if (lockAspectRatio) syncWidthFromHeight(h);
+  }, [lockAspectRatio, syncWidthFromHeight]);
+
+  const onLockToggle = useCallback(() => {
+    const enabling = !lockAspectRatio;
+    setLockAspectRatio(enabling);
+    if (enabling && width) {
+      syncHeightFromWidth(width);
+    }
+  }, [lockAspectRatio, width, syncHeightFromWidth]);
 
   let { dismiss } = useDialogContainer();
   let stringFormatter = useLocalizedStringFormatter(l10nMessages);
@@ -374,18 +396,7 @@ function ImageDialog(props: {
                     prominence="low"
                     isSelected={lockAspectRatio}
                     aria-label="Lock aspect ratio"
-                    onPress={() => {
-                      const enabling = !lockAspectRatio;
-                      setLockAspectRatio(enabling);
-                      if (enabling) {
-                        const ratio =
-                          naturalRatioRef.current ??
-                          (width && height ? width / height : null);
-                        if (ratio && width) {
-                          setHeight(Math.round(width / ratio));
-                        }
-                      }
-                    }}
+                    onPress={onLockToggle}
                   >
                     <Icon src={lockAspectRatio ? link2Icon : link2OffIcon} />
                   </ToggleButton>
