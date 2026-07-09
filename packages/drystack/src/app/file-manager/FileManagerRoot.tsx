@@ -4,6 +4,7 @@ import { AlertDialog, DialogContainer } from "@keystar/ui/dialog";
 import { FileTrigger } from "@keystar/ui/drag-and-drop";
 import { Icon } from "@keystar/ui/icon";
 import { fileUpIcon } from "@keystar/ui/icon/icons/fileUpIcon";
+import { folderPlusIcon } from "@keystar/ui/icon/icons/folderPlusIcon";
 import { trash2Icon } from "@keystar/ui/icon/icons/trash2Icon";
 import { columnsIcon } from "@keystar/ui/icon/icons/columnsIcon";
 import { listIcon } from "@keystar/ui/icon/icons/listIcon";
@@ -38,6 +39,8 @@ import { useDirectoryChildren } from "./useDirectoryChildren";
 import { useSearchResults } from "./useSearch";
 import { useFileManagerUpload } from "./useFileManagerUpload";
 import { UploadConflictDialog } from "./UploadConflictDialog";
+import { NewFolderDialog } from "./NewFolderDialog";
+import { useCreateFolder } from "./useCreateFolder";
 import { AssetPreviewOverlay } from "./AssetPreviewOverlay";
 import { descendantBlobPaths, useTrash } from "./useTrash";
 
@@ -97,6 +100,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   const { readBytes, tree } = useAssetActions();
   const { trashPaths, restorePaths, permanentlyDelete } = useTrash();
   const upload = useFileManagerUpload();
+  const { createFolder } = useCreateFolder();
 
   const hasLocalTab = mode.kind === "picker" && !!mode.local;
   const defaultTab = mode.kind === "picker" && mode.local ? "local" : "library";
@@ -138,6 +142,8 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     paths: string[];
     label: string;
   } | null>(null);
+  const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   // uploads made in *picker* mode aren't reflected in the shared tree until
   // it naturally refreshes (see useMediaLibraryUpload's note) — cache them
@@ -246,6 +252,35 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
       for (const { path, content } of uploaded) next.set(path, content);
       return next;
     });
+  }
+
+  // mirrors the folder-row `onOpen` navigation below, so landing inside a
+  // just-created folder looks the same as opening any other folder
+  function navigateIntoSubfolder(name: string) {
+    if (tab === "local") {
+      setLocalPath((p) => (p ? `${p}/${name}` : name));
+    } else if (tab === "library") {
+      setLibraryPath((p) => (p ? `${p}/${name}` : name));
+    } else if (tab === "entries") {
+      setEntriesNav((nav) =>
+        nav.step === "dir"
+          ? { ...nav, subPath: nav.subPath ? `${nav.subPath}/${name}` : name }
+          : nav,
+      );
+    }
+  }
+
+  async function handleCreateFolder(name: string) {
+    if (!currentDir) return;
+    setIsCreatingFolder(true);
+    try {
+      const result = await createFolder(currentDir, name);
+      await afterMutation(result);
+      setNewFolderDialogOpen(false);
+      navigateIntoSubfolder(name);
+    } finally {
+      setIsCreatingFolder(false);
+    }
   }
 
   function requestDelete(paths: string[], label: string) {
@@ -596,6 +631,9 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   }
 
   const canUpload = currentDir !== null && tab !== "trash";
+  // folder creation writes into the same directory upload does, but only
+  // makes sense in the full page (not a media/file picker dialog)
+  const canCreateFolder = mode.kind === "page" && canUpload;
 
   // built as a plain array (rather than conditionally including <Item>
   // elements with `&&`) so every Item is unconditional — react-stately's
@@ -707,6 +745,12 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
                   </Button>
                 )}
               </>
+            )}
+            {canCreateFolder && (
+              <ActionButton onPress={() => setNewFolderDialogOpen(true)}>
+                <Icon src={folderPlusIcon} />
+                <Text>New folder</Text>
+              </ActionButton>
             )}
             {canUpload && (
               <FileTrigger
