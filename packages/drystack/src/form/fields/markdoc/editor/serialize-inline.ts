@@ -137,23 +137,17 @@ export function textblockChildren<Node extends object>(
   return content;
 }
 
+const FORMATTING_MARKS = ['bold', 'italic', 'underline', 'strikethrough'] as const;
+
 function shouldExpelWhitespace(markType: MarkType): boolean {
   const schema = getEditorSchema(markType.schema);
-  return (
-    markType === schema.marks.bold ||
-    markType === schema.marks.italic ||
-    markType === schema.marks.underline ||
-    markType === schema.marks.strikethrough
-  );
+  return FORMATTING_MARKS.some(mark => markType === schema.marks[mark]);
 }
 
 function isMarkTypeMixable(markType: MarkType) {
   const schema = getEditorSchema(markType.schema);
   return (
-    markType === schema.marks.bold ||
-    markType === schema.marks.italic ||
-    markType === schema.marks.underline ||
-    markType === schema.marks.strikethrough ||
+    FORMATTING_MARKS.some(mark => markType === schema.marks[mark]) ||
     markType === schema.marks.link
   );
 }
