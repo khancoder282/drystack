@@ -16,10 +16,17 @@ export function AssetGrid(props: {
     );
   }
   return (
-    <Flex wrap gap="medium">
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+        gap: '1rem',
+        width: '100%',
+      }}
+    >
       {props.items.map(({ key, ...item }) => (
         <AssetCard key={key} {...item} />
       ))}
-    </Flex>
+    </div>
   );
 }

@@ -108,12 +108,12 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   const [localPath, setLocalPath] = useState("");
   const [trashPath, setTrashPath] = useState("");
   const [entriesNav, setEntriesNav] = useState<EntriesNav>({ step: "root" });
-  const [viewMode, setViewModeState] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewModeState] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('file-manager-view-mode');
-      if (saved === 'list' || saved === 'grid') {
+      const saved = localStorage.getItem("file-manager-view-mode");
+      if (saved === "list" || saved === "grid") {
         setViewModeState(saved);
       }
     } catch (e) {
@@ -121,10 +121,10 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     }
   }, []);
 
-  const setViewMode = (mode: 'grid' | 'list') => {
+  const setViewMode = (mode: "grid" | "list") => {
     setViewModeState(mode);
     try {
-      localStorage.setItem('file-manager-view-mode', mode);
+      localStorage.setItem("file-manager-view-mode", mode);
     } catch (e) {
       // localStorage not available
     }
@@ -203,7 +203,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
       mode.onPick(picks);
     } else if (mode.kind === "picker" && picks.length === 0) {
       // File was selected but couldn't be loaded - likely not in tree yet
-      console.warn('Selected file could not be loaded:', path);
+      console.warn("Selected file could not be loaded:", path);
     }
   }
 
@@ -244,7 +244,9 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     }
   }
 
-  function cacheSessionUploads(uploaded: { path: string; content: Uint8Array }[]) {
+  function cacheSessionUploads(
+    uploaded: { path: string; content: Uint8Array }[],
+  ) {
     setSessionUploads((prev) => {
       const next = new Map(prev);
       for (const { path, content } of uploaded) next.set(path, content);
@@ -474,7 +476,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
             crumb?.onNavigate();
           }}
         />
-        {viewMode === 'grid' ? (
+        {viewMode === "grid" ? (
           <AssetGrid items={items} />
         ) : (
           <AssetList items={items as AssetListItemData[]} />
@@ -574,7 +576,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
             crumbs={[{ key: "entries", label: "Entries" }]}
             onNavigate={() => {}}
           />
-          {viewMode === 'grid' ? (
+          {viewMode === "grid" ? (
             <AssetGrid
               items={items}
               emptyMessage="No collections or singletons configured."
@@ -625,10 +627,13 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
               if (key === "root") setEntriesNav({ step: "root" });
             }}
           />
-          {viewMode === 'grid' ? (
+          {viewMode === "grid" ? (
             <AssetGrid items={items} emptyMessage="No entries yet." />
           ) : (
-            <AssetList items={items as AssetListItemData[]} emptyMessage="No entries yet." />
+            <AssetList
+              items={items as AssetListItemData[]}
+              emptyMessage="No entries yet."
+            />
           )}
         </Flex>
       );
@@ -705,54 +710,23 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
           setSearch("");
         }}
       >
-        <Flex alignItems="center" justifyContent="space-between" gap="regular">
+        <Flex
+          direction={{ mobile: "column", tablet: "row" }}
+          alignItems={{ mobile: "stretch", tablet: "center" }}
+          gap="regular"
+          marginBottom="large"
+        >
           <TabList>
             {tabs.map((t) => (
               <Item key={t.key}>{t.label}</Item>
             ))}
           </TabList>
-          <Flex alignItems="center" gap="regular" wrap>
-            {selected.size > 0 && (
-              <>
-                <Text size="small">{selected.size} selected</Text>
-                {tab === "trash" ? (
-                  <>
-                    <Button
-                      onPress={() =>
-                        requestRestore([...selected], `${selected.size} items`)
-                      }
-                    >
-                      Restore
-                    </Button>
-                    <Button
-                      tone="critical"
-                      onPress={() =>
-                        requestPermanentDelete(
-                          [...selected],
-                          `${selected.size} items`,
-                        )
-                      }
-                    >
-                      Delete forever
-                    </Button>
-                  </>
-                ) : mode.kind === "page" ? (
-                  <Button
-                    tone="critical"
-                    onPress={() =>
-                      requestDelete([...selected], `${selected.size} items`)
-                    }
-                  >
-                    <Icon src={trash2Icon} />
-                    <Text>Delete</Text>
-                  </Button>
-                ) : (
-                  <Button prominence="high" onPress={pickSelected}>
-                    Use {selected.size} file{selected.size === 1 ? "" : "s"}
-                  </Button>
-                )}
-              </>
-            )}
+          <Flex
+            alignItems="center"
+            gap="regular"
+            wrap
+            UNSAFE_style={{ marginLeft: "auto" }}
+          >
             {canCreateFolder && (
               <ActionButton onPress={() => setNewFolderDialogOpen(true)}>
                 <Icon src={folderPlusIcon} />
@@ -777,31 +751,76 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
                 </ActionButton>
               </FileTrigger>
             )}
-            <SearchField
-              aria-label="Search files"
-              placeholder="Search by name…"
-              value={search}
-              onChange={setSearch}
-              width="scale.2400"
-            />
             <Flex gap="small">
               <ActionButton
-                isSelected={viewMode === 'grid'}
+                isSelected={viewMode === "grid"}
                 aria-label="Grid view"
-                onPress={() => setViewMode('grid')}
+                onPress={() => setViewMode("grid")}
               >
                 <Icon src={columnsIcon} />
               </ActionButton>
               <ActionButton
-                isSelected={viewMode === 'list'}
+                isSelected={viewMode === "list"}
                 aria-label="List view"
-                onPress={() => setViewMode('list')}
+                onPress={() => setViewMode("list")}
               >
                 <Icon src={listIcon} />
               </ActionButton>
             </Flex>
           </Flex>
+          <SearchField
+            aria-label="Search files"
+            placeholder="Search by name…"
+            value={search}
+            onChange={setSearch}
+          />
         </Flex>
+
+        {selected.size > 0 && (
+          <Flex alignItems="center" gap="regular" wrap marginY="regular">
+            <Text size="small">{selected.size} selected</Text>
+            <ActionButton onPress={() => setSelected(new Set())}>
+              <Text>Unselect all</Text>
+            </ActionButton>
+            {tab === "trash" ? (
+              <>
+                <Button
+                  onPress={() =>
+                    requestRestore([...selected], `${selected.size} items`)
+                  }
+                >
+                  Restore
+                </Button>
+                <Button
+                  tone="critical"
+                  onPress={() =>
+                    requestPermanentDelete(
+                      [...selected],
+                      `${selected.size} items`,
+                    )
+                  }
+                >
+                  Delete forever
+                </Button>
+              </>
+            ) : mode.kind === "page" ? (
+              <Button
+                tone="critical"
+                onPress={() =>
+                  requestDelete([...selected], `${selected.size} items`)
+                }
+              >
+                <Icon src={trash2Icon} />
+                <Text>Delete</Text>
+              </Button>
+            ) : (
+              <Button prominence="high" onPress={pickSelected}>
+                Use {selected.size} file{selected.size === 1 ? "" : "s"}
+              </Button>
+            )}
+          </Flex>
+        )}
+
         <TabPanels>
           {tabs.map((t) => (
             <Item key={t.key}>{t.content}</Item>

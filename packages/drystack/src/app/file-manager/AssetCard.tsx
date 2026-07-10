@@ -74,7 +74,7 @@ export function AssetCard(props: AssetCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       UNSAFE_style={{
-        width: 150,
+        width: "100%",
         padding: 8,
         position: "relative",
         opacity: props.disabled ? 0.45 : undefined,
