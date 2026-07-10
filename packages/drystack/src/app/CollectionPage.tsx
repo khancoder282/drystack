@@ -46,7 +46,6 @@ import {
   ColumnDescriptor,
   columnValueToSearchText,
   getDisplayKind,
-  redistributeColumnWidths,
 } from './collection-table/column-model';
 import { ColumnsMenu } from './collection-table/ColumnsMenu';
 import {
@@ -144,12 +143,8 @@ export function CollectionPage(props: CollectionPageProps) {
     [columnDescriptors]
   );
 
-  const {
-    hiddenColumns,
-    columnWidths,
-    setColumnWidths,
-    setHiddenColumnsAndWidths,
-  } = useCollectionViewState(collection, defaultHiddenColumns);
+  const { hiddenColumns, setHiddenColumns, columnWidths, setColumnWidths } =
+    useCollectionViewState(collection, defaultHiddenColumns);
 
   const visibleColumnDescriptors = useMemo(
     () =>
@@ -157,20 +152,6 @@ export function CollectionPage(props: CollectionPageProps) {
         c => c.displayKind === 'name' || !hiddenColumns.has(c.key)
       ),
     [columnDescriptors, hiddenColumns]
-  );
-
-  const handleHiddenColumnsChange = useCallback(
-    (hidden: ReadonlySet<string> | string[]) => {
-      const hiddenSet = new Set(hidden);
-      const visibleKeys = columnDescriptors
-        .filter(c => c.displayKind === 'name' || !hiddenSet.has(c.key))
-        .map(c => c.key);
-      setHiddenColumnsAndWidths(
-        hiddenSet,
-        redistributeColumnWidths(columnWidths, visibleKeys)
-      );
-    },
-    [columnDescriptors, columnWidths, setHiddenColumnsAndWidths]
   );
 
   return (
@@ -186,7 +167,7 @@ export function CollectionPage(props: CollectionPageProps) {
         onSearchTermChange={setSearchTermFromForm}
         columns={columnDescriptors}
         hiddenColumns={hiddenColumns}
-        onHiddenColumnsChange={handleHiddenColumnsChange}
+        onHiddenColumnsChange={setHiddenColumns}
       />
       <CollectionPageContent
         searchTerm={debouncedSearchTerm}
@@ -395,6 +376,7 @@ function CollectionPageContent(props: CollectionPageContentProps) {
 }
 
 const STATUS = '@@status';
+const COLUMN_MIN_WIDTH = 100;
 
 function CollectionTable(
   props: CollectionPageContentProps & {
@@ -588,7 +570,20 @@ function CollectionTable(
     sortDescriptor.direction,
   ]);
 
+  // live drag feedback for controlled column widths — react-stately only
+  // re-renders a *controlled* column at the width we feed it via the
+  // `width` prop, and only tracks its own internal drag state for
+  // *uncontrolled* columns. Since our widths are controlled (persisted
+  // percentages), we mirror each drag tick into this local, unpersisted
+  // state so the dragged column and its immediate neighbor visibly track
+  // the pointer; `commitColumnWidthsFromDom` clears it again once the drag
+  // ends and the real, persisted percentages take over.
+  const [liveColumnWidths, setLiveColumnWidths] = useState<
+    Record<string, number>
+  >({});
+
   const columns = useMemo(() => {
+    const lastKey = columnDescriptors[columnDescriptors.length - 1]?.key;
     return [
       ...(hideStatusColumn
         ? []
@@ -596,49 +591,185 @@ function CollectionTable(
       ...columnDescriptors.map(c => ({
         name: c.label,
         key: c.key,
-        // `defaultWidth` (not `width`) keeps these columns uncontrolled from
-        // react-stately's perspective — react-stately's TableColumnLayout
-        // only tracks live drag state for uncontrolled columns; a controlled
-        // `width` freezes the column at that prop value during resize since
-        // we only feed the result back on resize end, not on every move, so
-        // dragging any already-resized column wouldn't visibly move at all
-        defaultWidth: props.columnWidths?.[c.key],
+        // the last column never gets a stored width — it's left to grow or
+        // shrink to whatever space the others don't claim, absorbing any
+        // slack left behind by showing/hiding columns
+        width:
+          c.key === lastKey
+            ? undefined
+            : (liveColumnWidths[c.key] ?? props.columnWidths?.[c.key]),
+        minWidth: COLUMN_MIN_WIDTH,
         allowsResizing: true,
       })),
     ];
-  }, [columnDescriptors, hideStatusColumn, props.columnWidths]);
+  }, [
+    columnDescriptors,
+    hideStatusColumn,
+    props.columnWidths,
+    liveColumnWidths,
+  ]);
 
   const tableWrapperRef = useRef<HTMLDivElement>(null);
 
-  // `onResizeEnd`'s width map only reliably reports the columns directly
-  // involved in the drag, not every column — so instead of trusting its
-  // values we measure the actual rendered header widths and derive
-  // percentages of the whole table from those
-  const commitColumnWidthsFromDom = useCallback(() => {
+  // reads the actual rendered header widths from the DOM, keyed by column
+  // key — used both to snapshot the layout right as a drag starts (giving
+  // resize deltas a stable baseline) and to persist the layout once a drag
+  // ends, since react-stately's own resize widths map is only reliable for
+  // the dragged column itself (see findDraggedColumn below).
+  const measureHeaderWidths = useCallback(() => {
     const container = tableWrapperRef.current;
-    if (!container) return;
+    const widths = new Map<string, number>();
+    let total = 0;
+    if (!container) return { widths, total };
     const headers = Array.from(
       container.querySelectorAll<HTMLElement>('[role="columnheader"]')
     );
-    let total = 0;
-    const measured: { key: string; px: number }[] = [];
     headers.forEach((el, i) => {
       const col = columns[i];
-      if (!col || col.key === STATUS) return;
+      if (!col) return;
       const px = el.getBoundingClientRect().width;
-      measured.push({ key: String(col.key), px });
+      widths.set(String(col.key), px);
       total += px;
     });
-    if (total <= 0) return;
-    const next: Record<string, string> = {};
-    for (const { key, px } of measured) {
-      // the table's width parser only accepts whole-number percentages
-      // (e.g. "24%") — a decimal like "24.50%" is silently rejected and
-      // falls back to an equal-fr layout for every column
-      next[key] = `${Math.round((px / total) * 100)}%`;
+    return { widths, total };
+  }, [columns]);
+
+  // batches onResize drag ticks — declared here since
+  // commitColumnWidthsFromDom also needs to cancel a still-pending frame
+  // when a drag ends
+  const pendingWidthsRef = useRef<Map<React.Key, unknown> | null>(null);
+  const resizeRafRef = useRef<number | null>(null);
+  // pixel widths of every column, measured right as the current drag
+  // started — the baseline resize deltas below are computed against
+  const resizeStartWidthsRef = useRef<Map<string, number> | null>(null);
+
+  // react-stately's resize widths map only carries a live, accurate pixel
+  // value for the dragged column itself — every other column falls back to
+  // its current `width` prop unchanged. That's normally enough to tell the
+  // dragged column apart from the rest (its entry is the only "fresh" one),
+  // but since we deliberately feed a fresh pixel value to its neighbor too
+  // (to make the neighbor visibly absorb the difference), the neighbor's
+  // entry becomes numeric on the very next tick as well — which would make
+  // either one look like the dragged column from the widths map alone. So
+  // instead we read the DOM directly: react-stately marks the header of
+  // whichever column is actively being resized with `data-resizing="true"`
+  // (see the indicator div in @keystar/ui's table), independent of what
+  // we've fed back as `width` props.
+  const findDraggedColumn = useCallback(
+    (widths: Map<React.Key, unknown>) => {
+      const container = tableWrapperRef.current;
+      if (!container) return null;
+      const headers = Array.from(
+        container.querySelectorAll<HTMLElement>('[role="columnheader"]')
+      );
+      const draggedIndex = headers.findIndex(
+        el => el.querySelector('[data-resizing="true"]') != null
+      );
+      const col = columns[draggedIndex];
+      if (!col) return null;
+      const draggedKey = String(col.key);
+      const raw = widths.get(col.key);
+      const draggedPx = typeof raw === 'number' ? raw : Number(raw);
+      if (!Number.isFinite(draggedPx)) return null;
+      const neighbor = columns[draggedIndex + 1];
+      return {
+        draggedKey,
+        draggedPx,
+        neighborKey: neighbor ? String(neighbor.key) : null,
+      };
+    },
+    [columns]
+  );
+
+  const onColumnResizeStart = useCallback(() => {
+    resizeStartWidthsRef.current = measureHeaderWidths().widths;
+  }, [measureHeaderWidths]);
+
+  const commitColumnWidthsFromDom = useCallback(
+    (widths: Map<React.Key, unknown>) => {
+      const lastKey = columnDescriptors[columnDescriptors.length - 1]?.key;
+      const dragged = findDraggedColumn(widths);
+      const { widths: measured, total } = measureHeaderWidths();
+      if (dragged && total > 0) {
+        // only the dragged column and its immediate neighbor changed size
+        // — leave every other column's persisted width untouched
+        const next: Record<string, string> = { ...props.columnWidths };
+        for (const key of [dragged.draggedKey, dragged.neighborKey]) {
+          if (key == null || key === lastKey) continue;
+          const px = measured.get(key);
+          if (px == null) continue;
+          next[key] = `${Math.round((px / total) * 100)}%`;
+        }
+        props.onColumnWidthsChange(next);
+      }
+      // the persisted percentages now represent the current layout, so drop
+      // the ephemeral drag-tracking overrides in favor of them — including
+      // any still-queued animation-frame update, which would otherwise
+      // reapply a stale width right after this
+      if (resizeRafRef.current != null) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = null;
+      }
+      pendingWidthsRef.current = null;
+      resizeStartWidthsRef.current = null;
+      setLiveColumnWidths({});
+    },
+    [columnDescriptors, findDraggedColumn, measureHeaderWidths, props]
+  );
+
+  // mirrors each drag tick into local state so the dragged column and its
+  // immediate neighbor visibly track the pointer, transferring width
+  // between just the two of them — see the comment on findDraggedColumn
+  // above for why the neighbor needs to be computed by hand rather than
+  // read off react-stately's own widths map. `onResize` fires on every
+  // pointermove, which can be far more often than the screen actually
+  // repaints, so a state update per event just piles up redundant
+  // re-renders (visible as jank) without any visual benefit — coalesce
+  // them into at most one update per animation frame instead.
+  const flushPendingResize = useCallback(() => {
+    resizeRafRef.current = null;
+    const widths = pendingWidthsRef.current;
+    pendingWidthsRef.current = null;
+    const startWidths = resizeStartWidthsRef.current;
+    if (!widths || !startWidths) return;
+    const dragged = findDraggedColumn(widths);
+    if (!dragged) return;
+    const startDraggedPx =
+      startWidths.get(dragged.draggedKey) ?? dragged.draggedPx;
+    let delta = dragged.draggedPx - startDraggedPx;
+    const update: Record<string, number> = {
+      [dragged.draggedKey]: dragged.draggedPx,
+    };
+    if (dragged.neighborKey != null) {
+      const startNeighborPx = startWidths.get(dragged.neighborKey);
+      if (startNeighborPx != null) {
+        let newNeighborPx = startNeighborPx - delta;
+        // the neighbor can't give up more than it has down to its own
+        // minimum — clamp the delta so the dragged column can't grow past
+        // what the neighbor is actually able to hand over
+        if (newNeighborPx < COLUMN_MIN_WIDTH) {
+          delta = startNeighborPx - COLUMN_MIN_WIDTH;
+          newNeighborPx = COLUMN_MIN_WIDTH;
+          update[dragged.draggedKey] = startDraggedPx + delta;
+        }
+        update[dragged.neighborKey] = newNeighborPx;
+      }
     }
-    props.onColumnWidthsChange(next);
-  }, [columns, props]);
+    setLiveColumnWidths(prev => ({ ...prev, ...update }));
+  }, [findDraggedColumn]);
+  const onColumnResize = useCallback((widths: Map<React.Key, unknown>) => {
+    pendingWidthsRef.current = widths;
+    if (resizeRafRef.current == null) {
+      resizeRafRef.current = requestAnimationFrame(flushPendingResize);
+    }
+  }, [flushPendingResize]);
+  useEffect(() => {
+    return () => {
+      if (resizeRafRef.current != null) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -651,6 +782,8 @@ function CollectionTable(
         density="spacious"
         overflowMode="wrap"
         prominence="low"
+        onResizeStart={onColumnResizeStart}
+        onResize={onColumnResize}
         onResizeEnd={commitColumnWidthsFromDom}
         onAction={key => {
           router.push(
@@ -672,6 +805,11 @@ function CollectionTable(
         marginTop={{ tablet: 'large' }}
         marginBottom={{ mobile: 'regular', tablet: 'xlarge' }}
         UNSAFE_className={css({
+          // flex items default to a content-based min-width, which can let
+          // the table (a flex child of PageRoot) grow past the page instead
+          // of scrolling internally if its content is ever wider than
+          // available space
+          minWidth: 0,
           marginInline: tokenSchema.size.space.regular,
           [breakpointQueries.above.mobile]: {
             marginInline: `calc(${tokenSchema.size.space.xlarge} - ${tokenSchema.size.space.medium})`,

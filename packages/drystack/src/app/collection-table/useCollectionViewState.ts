@@ -35,10 +35,8 @@ export function useCollectionViewState(
     [saved, defaultHiddenColumns]
   );
 
-  // shared by the setters below so a call that touches both fields (e.g.
-  // toggling visibility while also redistributing widths) applies as one
-  // persisted state rather than two racing updates each built off a stale
-  // `saved` closure
+  // shared by the setters below so each only has to describe the field it's
+  // changing, leaving the other field's current value untouched
   const setViewState = useCallback(
     (patch: Partial<CollectionViewState>) => {
       const next: CollectionViewState = {
@@ -66,19 +64,10 @@ export function useCollectionViewState(
     [setViewState]
   );
 
-  // toggling column visibility while also recalculating widths in one shot
-  const setHiddenColumnsAndWidths = useCallback(
-    (keys: ReadonlySet<string> | string[], widths: Record<string, string>) => {
-      setViewState({ hiddenColumns: [...keys], columnWidths: widths });
-    },
-    [setViewState]
-  );
-
   return {
     hiddenColumns,
     setHiddenColumns,
     columnWidths: saved?.columnWidths,
     setColumnWidths,
-    setHiddenColumnsAndWidths,
   };
 }

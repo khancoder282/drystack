@@ -30,6 +30,7 @@ function cellSpanAttrs(node: ProseMirrorNode): Record<string, string> | undefine
   const attrs: Record<string, string> = {};
   if (node.attrs.colspan > 1) attrs.colspan = String(node.attrs.colspan);
   if (node.attrs.rowspan > 1) attrs.rowspan = String(node.attrs.rowspan);
+  if (node.attrs.widthPercent) attrs.style = `width:${node.attrs.widthPercent}%`;
   return Object.keys(attrs).length ? attrs : undefined;
 }
 

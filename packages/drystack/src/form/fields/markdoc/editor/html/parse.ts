@@ -198,12 +198,20 @@ function elementToBlockNode(
   }
 }
 
+function widthPercentFromStyle(style: string): number | null {
+  const match = /(?:^|;)\s*width\s*:\s*([\d.]+)%/.exec(style);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function cellSpanAttrs(el: Element) {
   const colspan = parseInt(el.getAttribute('colspan') ?? '', 10);
   const rowspan = parseInt(el.getAttribute('rowspan') ?? '', 10);
   return {
     colspan: Number.isInteger(colspan) && colspan > 0 ? colspan : 1,
     rowspan: Number.isInteger(rowspan) && rowspan > 0 ? rowspan : 1,
+    widthPercent: widthPercentFromStyle(el.getAttribute('style') ?? ''),
   };
 }
 

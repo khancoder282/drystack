@@ -50,36 +50,6 @@ export type ColumnDescriptor = {
   schema: ComponentSchema;
 };
 
-// rescales saved column-width percentages so the currently visible set sums
-// back to 100% — otherwise hiding a column leaves the rest short of the
-// table's full width (nothing is left to absorb its share), and re-showing
-// one drops it in with no room since the others already claim 100%
-export function redistributeColumnWidths(
-  columnWidths: Record<string, string> | undefined,
-  visibleKeys: string[]
-): Record<string, string> {
-  if (visibleKeys.length === 0) return { ...columnWidths };
-  const parsePercent = (value: string | undefined) => {
-    const match = value?.match(/^(\d+)%$/);
-    return match ? Number(match[1]) : undefined;
-  };
-  const equalShare = 100 / visibleKeys.length;
-  const weights = visibleKeys.map(
-    key => parsePercent(columnWidths?.[key]) ?? equalShare
-  );
-  const total = weights.reduce((sum, w) => sum + w, 0) || 1;
-  const rounded = weights.map(w => Math.round((w / total) * 100));
-  // the table's width parser only accepts whole-number percentages, so
-  // rounding each share individually can drift the total away from 100 —
-  // correct that drift on the last column
-  rounded[rounded.length - 1] += 100 - rounded.reduce((sum, w) => sum + w, 0);
-  const next = { ...columnWidths };
-  visibleKeys.forEach((key, i) => {
-    next[key] = `${rounded[i]}%`;
-  });
-  return next;
-}
-
 // text a column's value contributes to the "search across visible columns"
 // haystack — deliberately blank for kinds where stringifying the raw value
 // wouldn't be meaningful to search (images, checkboxes, nested structures)

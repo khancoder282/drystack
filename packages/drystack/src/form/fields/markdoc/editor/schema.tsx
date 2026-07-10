@@ -122,15 +122,30 @@ const levelsMeta = [
 const cellAttrs: Record<string, AttributeSpec> = {
   colspan: { default: 1 },
   rowspan: { default: 1 },
+  // this cell's own width, as a percentage of the table's width — set by
+  // dragging the column-resize handle (table-column-resize.ts). Only cells
+  // that were actually resized carry a value; the rest stay `null` (auto)
+  // and split whatever percentage the explicit columns don't claim.
+  widthPercent: { default: null },
 };
 
+function widthPercentFromStyle(style: string): number | null {
+  const match = /(?:^|;)\s*width\s*:\s*([\d.]+)%/.exec(style);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function getCellSpanAttrs(dom: HTMLElement | string) {
-  if (typeof dom === 'string') return { colspan: 1, rowspan: 1 };
+  if (typeof dom === 'string') {
+    return { colspan: 1, rowspan: 1, widthPercent: null };
+  }
   const colspan = parseInt(dom.getAttribute('colspan') ?? '', 10);
   const rowspan = parseInt(dom.getAttribute('rowspan') ?? '', 10);
   return {
     colspan: Number.isInteger(colspan) && colspan > 0 ? colspan : 1,
     rowspan: Number.isInteger(rowspan) && rowspan > 0 ? rowspan : 1,
+    widthPercent: widthPercentFromStyle(dom.style.cssText),
   };
 }
 
@@ -138,6 +153,7 @@ function cellSpanDOMAttrs(node: ProsemirrorNode) {
   const attrs: Record<string, string> = {};
   if (node.attrs.colspan > 1) attrs.colspan = String(node.attrs.colspan);
   if (node.attrs.rowspan > 1) attrs.rowspan = String(node.attrs.rowspan);
+  if (node.attrs.widthPercent) attrs.style = `width:${node.attrs.widthPercent}%`;
   return attrs;
 }
 
