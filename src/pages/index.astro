@@ -1,10 +1,18 @@
 ---
 import { createReader } from "@drystack/core/reader";
 import config from "../../drystack.config";
-import Image from "astro/components/Image.astro";
 
 const reader = createReader(process.cwd(), config);
-const demo = await reader.singletons.demo.read();
+const home = await reader.singletons.home.read({ resolveLinkedFiles: true });
+
+const allPosts = await reader.collections.posts.all();
+const posts = allPosts
+  .filter(({ entry }) => entry.publish)
+  .map(({ slug, entry }) => ({
+    slug,
+    title: entry.title,
+    description: entry.description,
+  }));
 ---
 
 <html lang="en">
@@ -14,11 +22,48 @@ const demo = await reader.singletons.demo.read();
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    <title>Astro</title>
+    <title>{home?.heading ?? "Drystack"}</title>
   </head>
   <body>
-    <h1>{demo?.heading ?? "Astro"}</h1>
-    {demo?.description && <p>{demo.description}</p>}
-    {demo?.image && <Image width={160} height={180} alt="" src={demo?.image} style="object-fit: cover" />}
+    <main>
+      {
+        home ? (
+          <>
+            <h1>{home.heading}</h1>
+            {home.description && <p>{home.description}</p>}
+            {home.image && (
+              <img src={home.image.startsWith("/") ? home.image : `/${home.image}`} alt="" style="width: 300px;" />
+            )}
+            {home.body && <Fragment set:html={home.body} />}
+          </>
+        ) : (
+          <>
+            <h1>Drystack</h1>
+            <p>
+              No "Home" content yet — add some in the admin UI at{" "}
+              <a href="/drystack/singleton/home">/drystack</a>.
+            </p>
+          </>
+        )
+      }
+
+      <hr />
+
+      <section>
+        <h2>Posts</h2>
+        {posts.length === 0 ? (
+          <p>No published posts yet.</p>
+        ) : (
+          <ul>
+            {posts.map((post) => (
+              <li>
+                <a href={`/posts/${post.slug}`}>{post.title}</a>
+                {post.description && <p>{post.description}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   </body>
 </html>

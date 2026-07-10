@@ -1,54 +1,73 @@
-import { ReactNode } from 'react';
-import { Badge } from '@keystar/ui/badge';
-import { Icon } from '@keystar/ui/icon';
-import { externalLinkIcon } from '@keystar/ui/icon/icons/externalLinkIcon';
-import { fileIcon } from '@keystar/ui/icon/icons/fileIcon';
-import { Flex } from '@keystar/ui/layout';
-import { Switch } from '@keystar/ui/switch';
-import { css, tokenSchema } from '@keystar/ui/style';
-import { Text } from '@keystar/ui/typography';
+import { ReactNode } from "react";
+import { Badge } from "@keystar/ui/badge";
+import { Icon } from "@keystar/ui/icon";
+import { externalLinkIcon } from "@keystar/ui/icon/icons/externalLinkIcon";
+import { fileIcon } from "@keystar/ui/icon/icons/fileIcon";
+import { Flex } from "@keystar/ui/layout";
+import { Switch } from "@keystar/ui/switch";
+import { css, tokenSchema } from "@keystar/ui/style";
+import { Text } from "@keystar/ui/typography";
 
-import { ComponentSchema } from '../../form/api';
-import { useMediaLibraryPreviewURL } from '../media-library/useMediaLibraryPreviewURL';
-import { ColumnDescriptor } from './column-model';
+import { ComponentSchema } from "../../form/api";
+import { useMediaLibraryPreviewURL } from "../media-library/useMediaLibraryPreviewURL";
+import { ColumnDescriptor } from "./column-model";
 import {
   formatDateValue,
   formatDatetimeValue,
   formatNumberValue,
-  stripHtmlForPreview,
   summarizeContent,
-} from './format-helpers';
-import { PendingCheckboxEdit } from './QuickEditCheckboxDialog';
+} from "./format-helpers";
+import { PendingCheckboxEdit } from "./QuickEditCheckboxDialog";
 
 const lineClampStyle = css({
-  display: '-webkit-box',
+  display: "-webkit-box",
   WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
-  overflow: 'hidden',
-  wordBreak: 'break-word',
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  wordBreak: "break-word",
   // a tight line-height clips Vietnamese diacritics (dấu) above/below the
   // glyph, since -webkit-line-clamp cuts off exactly at line-height × 2
   lineHeight: 2,
 });
 
-const dimText = { color: 'neutralSecondary' as const, size: 'small' as const };
+const dimText = { color: "neutralSecondary" as const, size: "small" as const };
 
 export function EmptyCell() {
   return <Text {...dimText}>—</Text>;
 }
 
 const slugStyle = css({
-  marginTop: 3,
-  fontStyle: 'italic',
+  marginTop: 5,
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  wordBreak: "break-all",
+  fontStyle: "italic",
+  lineHeight: 1.5
 });
 
 export function NameCell(props: { title: string; slug: string }) {
   const showSlug = props.title !== props.slug;
   return (
     <Flex direction="column" gap="xsmall" minWidth={0}>
-      <Text weight="medium">{props.title}</Text>
+      <Text
+        weight="medium"
+        UNSAFE_style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: 2
+        }}
+      >
+        {props.title}
+      </Text>
       {showSlug && (
-        <Text size="small" color="neutralSecondary" UNSAFE_className={slugStyle}>
+        <Text
+          size="small"
+          color="neutralSecondary"
+          UNSAFE_className={slugStyle}
+        >
           {props.slug}
         </Text>
       )}
@@ -63,15 +82,15 @@ export function SlugPairCell(props: { value: unknown }) {
   const { value } = props;
   if (
     value &&
-    typeof value === 'object' &&
-    'name' in value &&
-    'slug' in value &&
-    typeof (value as any).name === 'string' &&
-    typeof (value as any).slug === 'string'
+    typeof value === "object" &&
+    "name" in value &&
+    "slug" in value &&
+    typeof (value as any).name === "string" &&
+    typeof (value as any).slug === "string"
   ) {
     return <NameCell title={(value as any).name} slug={(value as any).slug} />;
   }
-  return <TextCell value={typeof value === 'string' ? value : ''} />;
+  return <TextCell value={typeof value === "string" ? value : ""} />;
 }
 
 export function TextCell(props: { value: string }) {
@@ -84,8 +103,8 @@ const thumbnailStyle = css({
   width: 128,
   height: 72,
   borderRadius: tokenSchema.size.radius.regular,
-  objectFit: 'cover',
-  display: 'block',
+  objectFit: "cover",
+  display: "block",
   backgroundColor: tokenSchema.color.background.surfaceSecondary,
 });
 
@@ -101,7 +120,7 @@ export function ImageCell(props: { path: string | null }) {
 
 export function FileCell(props: { path: string | null }) {
   if (!props.path) return <EmptyCell />;
-  const filename = props.path.split('/').pop() ?? props.path;
+  const filename = props.path.split("/").pop() ?? props.path;
   return (
     <Flex gap="xsmall" alignItems="center" minWidth={0}>
       <Icon src={fileIcon} color="neutralSecondary" size="small" />
@@ -118,7 +137,7 @@ export function ContentSizeCell(props: { value: unknown }) {
     | null;
   const isEmpty =
     value == null ||
-    (typeof value === 'string'
+    (typeof value === "string"
       ? !value.trim()
       : !value.wordCount && !value.charCount);
   if (isEmpty) {
@@ -145,7 +164,7 @@ export function DateCell(props: { value: string | null; withTime?: boolean }) {
 export function NumberCell(props: { value: number | null }) {
   if (props.value === null || props.value === undefined) return <EmptyCell />;
   return (
-    <Text UNSAFE_className={css({ fontVariantNumeric: 'tabular-nums' })}>
+    <Text UNSAFE_className={css({ fontVariantNumeric: "tabular-nums" })}>
       {formatNumberValue(props.value)}
     </Text>
   );
@@ -159,15 +178,15 @@ export function UrlCell(props: { value: string | null }) {
         href={props.value}
         target="_blank"
         rel="noreferrer"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         className={css({
-          display: 'inline-flex',
-          alignItems: 'center',
+          display: "inline-flex",
+          alignItems: "center",
           gap: tokenSchema.size.space.xsmall,
           color: tokenSchema.color.foreground.accent,
         })}
       >
-        <span className={css({ overflow: 'hidden', textOverflow: 'ellipsis' })}>
+        <span className={css({ overflow: "hidden", textOverflow: "ellipsis" })}>
           {props.value}
         </span>
         <Icon src={externalLinkIcon} size="small" />
@@ -203,7 +222,7 @@ export function ListCell(props: {
     <Flex gap="xsmall" wrap>
       {shown.map((value, i) => (
         <Badge key={i} tone="neutral">
-          {schema ? getOptionLabel(schema, value) ?? value : value}
+          {schema ? (getOptionLabel(schema, value) ?? value) : value}
         </Badge>
       ))}
       {remaining > 0 && <Badge tone="neutral">+{remaining}</Badge>}
@@ -231,38 +250,38 @@ export function ArrayCell(props: { length: number }) {
   if (!props.length) return <EmptyCell />;
   return (
     <Text {...dimText}>
-      {props.length} item{props.length === 1 ? '' : 's'}
+      {props.length} item{props.length === 1 ? "" : "s"}
     </Text>
   );
 }
 
 export function ObjectCell(props: { value: unknown }) {
   const count =
-    props.value && typeof props.value === 'object'
-      ? Object.values(props.value).filter(v => v != null && v !== '').length
+    props.value && typeof props.value === "object"
+      ? Object.values(props.value).filter((v) => v != null && v !== "").length
       : 0;
   if (!count) return <EmptyCell />;
   return (
     <Text {...dimText}>
-      {count} field{count === 1 ? '' : 's'} set
+      {count} field{count === 1 ? "" : "s"} set
     </Text>
   );
 }
 
 export function getOptionLabel(
   schema: ComponentSchema,
-  value: string
+  value: string,
 ): string | undefined {
   const options = (schema as any).options as
     | readonly { label: string; value: string }[]
     | undefined;
-  return options?.find(option => option.value === value)?.label;
+  return options?.find((option) => option.value === value)?.label;
 }
 
 export function DefaultCell(props: { value: unknown }): ReactNode {
-  if (props.value == null || props.value === '') return <EmptyCell />;
-  if (typeof props.value === 'boolean') {
-    return <Text>{props.value ? 'True' : 'False'}</Text>;
+  if (props.value == null || props.value === "") return <EmptyCell />;
+  if (typeof props.value === "boolean") {
+    return <Text>{props.value ? "True" : "False"}</Text>;
   }
   return <TextCell value={String(props.value)} />;
 }
@@ -271,22 +290,22 @@ export function renderColumnCell(
   descriptor: ColumnDescriptor,
   value: unknown,
   itemSlug: string,
-  ctx: { onRequestCheckboxEdit: (edit: PendingCheckboxEdit) => void }
+  ctx: { onRequestCheckboxEdit: (edit: PendingCheckboxEdit) => void },
 ): ReactNode {
   switch (descriptor.displayKind) {
-    case 'name':
+    case "name":
       return (
         <NameCell
-          title={typeof value === 'string' && value ? value : itemSlug}
+          title={typeof value === "string" && value ? value : itemSlug}
           slug={itemSlug}
         />
       );
-    case 'checkbox':
+    case "checkbox":
       return (
         <CheckboxCell
           label={descriptor.label}
           value={Boolean(value)}
-          onRequestChange={next =>
+          onRequestChange={(next) =>
             ctx.onRequestCheckboxEdit({
               itemSlug,
               fieldKey: descriptor.key,
@@ -296,50 +315,50 @@ export function renderColumnCell(
           }
         />
       );
-    case 'image':
-      return <ImageCell path={typeof value === 'string' ? value : null} />;
-    case 'file':
-      return <FileCell path={typeof value === 'string' ? value : null} />;
-    case 'url':
-      return <UrlCell value={typeof value === 'string' ? value : null} />;
-    case 'relationship':
+    case "image":
+      return <ImageCell path={typeof value === "string" ? value : null} />;
+    case "file":
+      return <FileCell path={typeof value === "string" ? value : null} />;
+    case "url":
+      return <UrlCell value={typeof value === "string" ? value : null} />;
+    case "relationship":
       return (
-        <RelationshipCell value={typeof value === 'string' ? value : null} />
+        <RelationshipCell value={typeof value === "string" ? value : null} />
       );
-    case 'multiRelationship':
-    case 'files':
+    case "multiRelationship":
+    case "files":
       return <ListCell values={Array.isArray(value) ? value : []} />;
-    case 'select':
+    case "select":
       return (
         <SelectCell
-          value={typeof value === 'string' ? value : null}
+          value={typeof value === "string" ? value : null}
           schema={descriptor.schema!}
         />
       );
-    case 'multiselect':
+    case "multiselect":
       return (
         <ListCell
           values={Array.isArray(value) ? value : []}
           schema={descriptor.schema}
         />
       );
-    case 'date':
-      return <DateCell value={typeof value === 'string' ? value : null} />;
-    case 'datetime':
+    case "date":
+      return <DateCell value={typeof value === "string" ? value : null} />;
+    case "datetime":
       return (
-        <DateCell value={typeof value === 'string' ? value : null} withTime />
+        <DateCell value={typeof value === "string" ? value : null} withTime />
       );
-    case 'number':
-      return <NumberCell value={typeof value === 'number' ? value : null} />;
-    case 'content':
+    case "number":
+      return <NumberCell value={typeof value === "number" ? value : null} />;
+    case "content":
       return <ContentSizeCell value={value} />;
-    case 'slugPair':
+    case "slugPair":
       return <SlugPairCell value={value} />;
-    case 'array':
+    case "array":
       return <ArrayCell length={Array.isArray(value) ? value.length : 0} />;
-    case 'object':
+    case "object":
       return <ObjectCell value={value} />;
-    case 'text':
+    case "text":
     default:
       return <DefaultCell value={value} />;
   }
