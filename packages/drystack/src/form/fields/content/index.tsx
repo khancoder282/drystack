@@ -1,5 +1,4 @@
 import { AssetsFormField } from '../../api';
-import { FieldDataError } from '../error';
 import {
   DocumentFieldInput,
   getDefaultValue,
@@ -13,6 +12,15 @@ import {
   MarkdocEditorOptions,
   editorOptionsToConfig,
 } from '../markdoc/config';
+import {
+  countWordsAndChars,
+  stripHtmlForPreview,
+} from '../../../app/collection-table/format-helpers';
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+export type ContentSummary = { wordCount: number; charCount: number };
 
 export function content({
   label,
@@ -40,6 +48,11 @@ export function content({
     kind: 'form',
     formKind: 'assets',
     htmlContentEditor: true,
+    // the HTML body is written to its own file instead of living inline in
+    // the entry's YAML/JSON — `value` only carries the lightweight
+    // { wordCount, charCount } summary, so listing entries never has to
+    // fetch (and parse) the full document
+    contentExtension: '.html',
     defaultValue() {
       return getDefaultValue(getSchema());
     },
@@ -52,24 +65,30 @@ export function content({
         />
       );
     },
-    parse(value, { other }) {
-      if (value === undefined) return getDefaultValue(getSchema());
-      if (typeof value !== 'string') {
-        throw new FieldDataError('Must be a string');
-      }
-      return parseToEditorStateHTML(value, getSchema(), other);
+    parse(_value, { content, other }) {
+      if (content === undefined) return getDefaultValue(getSchema());
+      const html = textDecoder.decode(content);
+      return parseToEditorStateHTML(html, getSchema(), other);
     },
     validate(value) {
       return value;
     },
     serialize(value) {
       const out = serializeFromEditorStateHTML(value);
-      return { value: out.value, other: out.other, external: new Map() };
+      const summary: ContentSummary = countWordsAndChars(
+        stripHtmlForPreview(out.value)
+      );
+      return {
+        value: summary,
+        content: textEncoder.encode(out.value),
+        other: out.other,
+        external: new Map(),
+      };
     },
     reader: {
-      parse(value) {
-        if (typeof value !== 'string') return '';
-        return value;
+      parse(_value, extra) {
+        if (extra?.content === undefined) return '';
+        return textDecoder.decode(extra.content);
       },
     },
   };

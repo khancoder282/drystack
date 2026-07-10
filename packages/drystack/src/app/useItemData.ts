@@ -1,4 +1,5 @@
 import { LRUCache } from 'lru-cache';
+import type { Client } from 'urql';
 import { useCallback, useMemo } from 'react';
 import { Config } from '../config';
 import {
@@ -24,7 +25,7 @@ import {
   MaybePromise,
 } from './utils';
 import { toFormattedFormDataError } from '../form/error-formatting';
-import { serializeRepoConfig } from './repo-config';
+import { parseRepoConfig, serializeRepoConfig } from './repo-config';
 import {
   getBlobFromPersistedCache,
   setBlobToPersistedCache,
@@ -162,23 +163,15 @@ export function parseEntry(
             schema
           );
 
-          if (schema.formKind === 'content') {
-            const mainFilepath = rootPath + schema.contentExtension;
-            const mainContents = getFile(mainFilepath);
-            return schema.parse(value, {
-              content: mainContents,
-              other,
-              external,
-              slug: args.slug?.slug,
-            });
-          }
-          if (schema.formKind === 'assets') {
-            return schema.parse(value, {
-              other,
-              external,
-              slug: args.slug?.slug,
-            });
-          }
+          const content = schema.contentExtension
+            ? getFile(rootPath + schema.contentExtension)
+            : undefined;
+          return schema.parse(value, {
+            content,
+            other,
+            external,
+            slug: args.slug?.slug,
+          });
         }
 
         return schema.parse(value, undefined);
@@ -421,4 +414,122 @@ export function fetchBlob(
 
   blobCache.set(oid, promise);
   return promise;
+}
+
+const textEncoderForBatch = new TextEncoder();
+
+// GitHub caps query cost/complexity — chunking keeps a single collection
+// page from ever sending one enormous request, and keeps each request well
+// under that limit regardless of collection size.
+const BATCH_BLOB_CHUNK_SIZE = 100;
+
+// Fetches many blobs in as few requests as possible. Only `storage.kind ===
+// 'github'` gets real batching: it builds one GraphQL query per chunk with
+// an aliased `object(oid: ...)` field per blob (GitHub's REST blob/tree
+// endpoints have no bulk-read equivalent, and the root `nodes(ids:)` batch
+// field takes GraphQL global ids, not git blob oids, so aliasing is the only
+// way to fold N blob reads into one request). This query is intentionally
+// built as a raw string rather than a `ts-gql` document — the number of
+// aliases varies per call, which a statically codegen'd operation can't
+// express. `storage.kind === 'cloud'` keeps the old one-request-per-blob
+// path because its urql client runs `persistedExchange({
+// enforcePersistedQueries: true })` (see provider.tsx), which rejects any
+// query that isn't a pre-registered persisted operation — a dynamically
+// shaped query can't be persisted ahead of time. `local` mode has no
+// GraphQL endpoint at all.
+export async function fetchBlobsBatch(
+  config: Config,
+  client: Client,
+  entries: { oid: string; filepath: string }[],
+  commitSha: string,
+  repoInfo: { owner: string; name: string; isPrivate: boolean } | null,
+  basePath: string
+): Promise<Map<string, Uint8Array>> {
+  const result = new Map<string, Uint8Array>();
+  const uncached: typeof entries = [];
+  for (const entry of entries) {
+    const cached = blobCache.get(entry.oid);
+    if (cached !== undefined) {
+      result.set(entry.oid, await cached);
+    } else {
+      uncached.push(entry);
+    }
+  }
+  if (!uncached.length) return result;
+
+  if (config.storage.kind !== 'github') {
+    await Promise.all(
+      uncached.map(async entry => {
+        result.set(
+          entry.oid,
+          await fetchBlob(
+            config,
+            entry.oid,
+            entry.filepath,
+            commitSha,
+            repoInfo,
+            basePath
+          )
+        );
+      })
+    );
+    return result;
+  }
+
+  const stillUncached: typeof entries = [];
+  for (const entry of uncached) {
+    const stored = await getBlobFromPersistedCache(entry.oid);
+    if (stored) {
+      blobCache.set(entry.oid, stored);
+      result.set(entry.oid, stored);
+    } else {
+      stillUncached.push(entry);
+    }
+  }
+  if (!stillUncached.length) return result;
+
+  const repo = parseRepoConfig(config.storage.repo);
+
+  for (
+    let start = 0;
+    start < stillUncached.length;
+    start += BATCH_BLOB_CHUNK_SIZE
+  ) {
+    const chunk = stillUncached.slice(start, start + BATCH_BLOB_CHUNK_SIZE);
+    const variableDefs = chunk
+      .map((_, i) => `$oid${i}: GitObjectID!`)
+      .join(', ');
+    const selections = chunk
+      .map(
+        (_, i) => `e${i}: object(oid: $oid${i}) { ... on Blob { text } }`
+      )
+      .join('\n');
+    const query = `query BatchBlobs($owner: String!, $name: String!, ${variableDefs}) {
+      repository(owner: $owner, name: $name) {
+        ${selections}
+      }
+    }`;
+    const variables: Record<string, string> = {
+      owner: repo.owner,
+      name: repo.name,
+    };
+    chunk.forEach((entry, i) => {
+      variables[`oid${i}`] = entry.oid;
+    });
+
+    const res = await client.query(query, variables).toPromise();
+    if (res.error) throw res.error;
+    const repository = res.data?.repository as
+      | Record<string, { text?: string | null } | null>
+      | undefined;
+    chunk.forEach((entry, i) => {
+      const text = repository?.[`e${i}`]?.text ?? '';
+      const bytes = textEncoderForBatch.encode(text);
+      blobCache.set(entry.oid, bytes);
+      setBlobToPersistedCache(entry.oid, bytes);
+      result.set(entry.oid, bytes);
+    });
+  }
+
+  return result;
 }

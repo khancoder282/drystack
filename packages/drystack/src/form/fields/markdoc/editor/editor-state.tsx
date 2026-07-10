@@ -22,7 +22,7 @@ import { pasteLinks } from './links';
 import { markdocClipboard } from './markdoc/clipboard';
 import { nodeInSelectionDecorations } from './node-in-selection';
 import { placeholderPlugin } from './placeholder';
-import { tableCellMenuPlugin } from './popovers/table';
+import { tableCellFocusHighlight } from './popovers/table';
 import { reactNodeViews } from './react-node-views';
 import { getEditorSchema } from './schema';
 import { tableColumnResizing } from './table-column-resize';
@@ -91,7 +91,7 @@ export function createEditorState(
       autocompleteDecoration(),
       tableColumnResizing(),
       tableEditing(),
-      tableCellMenuPlugin(),
+      tableCellFocusHighlight(),
       codeBlockSyntaxHighlighting(),
       trailingParagraph(doc.type.schema.nodes.paragraph),
     ],

@@ -16,7 +16,6 @@ import { EditorPopoverDecoration } from './popovers';
 import { ProseMirrorEditable, ProseMirrorEditor } from './editor-view';
 import { AutocompleteDecoration } from './autocomplete/decoration';
 import { NodeViews } from './react-node-views';
-import { CellMenuPortal } from './popovers/table';
 import {
   EditorContextProvider,
   getContentId,
@@ -131,7 +130,6 @@ export const Editor = forwardRef(function Editor(
           </div>
         </Box>
         <NodeViews state={value} />
-        <CellMenuPortal />
         <EditorPopoverDecoration state={value} />
         <AutocompleteDecoration />
       </ProseMirrorEditor>

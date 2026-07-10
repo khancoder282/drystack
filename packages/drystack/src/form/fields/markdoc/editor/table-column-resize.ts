@@ -25,6 +25,9 @@ type Dragging = {
   minPx: number;
   leftCells: CellRef[];
   rightCells: CellRef[];
+  // updated on every pointermove — `decorations()` reads this to render the
+  // live preview (see `buildDragDecorations`)
+  currentClientX: number;
 };
 
 type PluginState = {
@@ -123,21 +126,45 @@ function draggedWidths(dragging: Dragging, clientX: number) {
   };
 }
 
-function applyLiveWidths(
-  view: EditorView,
-  leftCells: CellRef[],
-  rightCells: CellRef[],
-  leftPct: number,
-  rightPct: number
-) {
-  for (const { pos } of leftCells) {
-    const dom = view.nodeDOM(pos) as HTMLElement | null;
-    if (dom) dom.style.width = `${leftPct}%`;
-  }
-  for (const { pos } of rightCells) {
-    const dom = view.nodeDOM(pos) as HTMLElement | null;
-    if (dom) dom.style.width = `${rightPct}%`;
-  }
+// Live preview during a drag. `EditorView.nodeDOM` explicitly documents that
+// direct DOM mutation ("do not mutate the editor DOM directly... that will
+// be immediately overriden by the editor as it redraws the node") gets
+// reverted by ProseMirror's own DOM-mutation observer — which is exactly why
+// a raw-DOM version of this appeared to do nothing until the drag ended.
+// Decorations are the supported way to render a transient visual override:
+// `style` attrs from a node decoration are appended after (and so, per CSS
+// cascade, win over) the cell's own `toDOM`-rendered `style`.
+function buildDragDecorations(state: EditorState, dragging: Dragging): Decoration[] {
+  const { leftPct, rightPct } = draggedWidths(dragging, dragging.currentClientX);
+  const decorations: Decoration[] = [];
+  const addRange = (cells: CellRef[], pct: number) => {
+    for (const { pos } of cells) {
+      const node = state.doc.nodeAt(pos);
+      if (!node) continue;
+      decorations.push(
+        Decoration.node(pos, pos + node.nodeSize, { style: `width:${pct}%` })
+      );
+    }
+  };
+  addRange(dragging.leftCells, leftPct);
+  addRange(dragging.rightCells, rightPct);
+  return decorations;
+}
+
+// Applies a plugin-only meta transaction directly via `view.updateState`
+// instead of `view.dispatch`. This app's `dispatchTransaction` (see
+// editor-view.tsx) forwards every dispatched transaction to the form's
+// `onChange`, which is a React state update — fine for the occasional
+// hover-boundary change, but the drag preview fires on every animation
+// frame, and funneling that through React (60/sec, marking the form dirty
+// the whole time for a change that isn't even part of the document) was
+// enough to trip React's nested-update guard ("Maximum update depth
+// exceeded"). `updateState` re-syncs the view's own DOM/decorations
+// exactly like `dispatch` would, without involving React at all — the only
+// transaction that should reach `dispatch` is the final commit on drop.
+function updateViewMeta(view: EditorView, meta: unknown) {
+  const tr = view.state.tr.setMeta(tableColumnResizingKey, meta);
+  view.updateState(view.state.apply(tr));
 }
 
 function commitResize(
@@ -191,30 +218,29 @@ function startDrag(view: EditorView, activeHandle: number, event: PointerEvent) 
     minPx,
     leftCells,
     rightCells,
+    currentClientX: event.clientX,
   };
-  view.dispatch(
-    view.state.tr.setMeta(tableColumnResizingKey, { setDragging: dragging })
-  );
+  updateViewMeta(view, { setDragging: dragging });
 
   const win = view.dom.ownerDocument.defaultView ?? window;
   let lastClientX = event.clientX;
+  let rafId: number | null = null;
 
   const move = (moveEvent: PointerEvent) => {
     lastClientX = moveEvent.clientX;
-    const pluginState = tableColumnResizingKey.getState(view.state);
-    if (!pluginState?.dragging) return;
-    const { leftPct, rightPct } = draggedWidths(pluginState.dragging, lastClientX);
-    applyLiveWidths(
-      view,
-      pluginState.dragging.leftCells,
-      pluginState.dragging.rightCells,
-      leftPct,
-      rightPct
-    );
+    if (rafId != null) return;
+    rafId = win.requestAnimationFrame(() => {
+      rafId = null;
+      updateViewMeta(view, { updateDragX: lastClientX });
+    });
   };
   const finish = () => {
     win.removeEventListener('pointermove', move);
     win.removeEventListener('pointerup', finish);
+    if (rafId != null) {
+      win.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
     const pluginState = tableColumnResizingKey.getState(view.state);
     if (pluginState?.dragging) {
       const { leftPct, rightPct } = draggedWidths(pluginState.dragging, lastClientX);
@@ -282,6 +308,12 @@ export function tableColumnResizing(): Plugin<PluginState> {
         if (meta && 'setDragging' in meta) {
           return { ...prev, dragging: meta.setDragging };
         }
+        if (meta && 'updateDragX' in meta && prev.dragging) {
+          return {
+            ...prev,
+            dragging: { ...prev.dragging, currentClientX: meta.updateDragX },
+          };
+        }
         if (prev.activeHandle > -1 && tr.docChanged) {
           const mapped = tr.mapping.map(prev.activeHandle, -1);
           return {
@@ -293,7 +325,7 @@ export function tableColumnResizing(): Plugin<PluginState> {
       },
     },
     props: {
-      attributes(state) {
+      attributes(state): Record<string, string> {
         const pluginState = tableColumnResizingKey.getState(state);
         return pluginState && pluginState.activeHandle > -1
           ? { class: resizeCursorClass }
@@ -302,7 +334,9 @@ export function tableColumnResizing(): Plugin<PluginState> {
       decorations(state) {
         const pluginState = tableColumnResizingKey.getState(state);
         if (!pluginState) return;
-        return buildHandleDecorations(state, pluginState);
+        const handles = buildHandleDecorations(state, pluginState);
+        if (!pluginState.dragging) return handles;
+        return handles.add(state.doc, buildDragDecorations(state, pluginState.dragging));
       },
       handleDOMEvents: {
         pointermove(view, event) {
@@ -320,18 +354,14 @@ export function tableColumnResizing(): Plugin<PluginState> {
             }
           }
           if (handle !== pluginState.activeHandle) {
-            view.dispatch(
-              view.state.tr.setMeta(tableColumnResizingKey, { setHandle: handle })
-            );
+            updateViewMeta(view, { setHandle: handle });
           }
           return false;
         },
         pointerleave(view) {
           const pluginState = tableColumnResizingKey.getState(view.state);
           if (pluginState && pluginState.activeHandle > -1 && !pluginState.dragging) {
-            view.dispatch(
-              view.state.tr.setMeta(tableColumnResizingKey, { setHandle: -1 })
-            );
+            updateViewMeta(view, { setHandle: -1 });
           }
           return false;
         },

@@ -74,10 +74,11 @@ import {
   isLocalConfig,
 } from './utils';
 import { notFound } from './not-found';
-import { fetchBlob } from './useItemData';
+import { fetchBlobsBatch } from './useItemData';
 import { loadDataFile } from './required-files';
 import { parseProps } from '../form/parse-props';
 import { useData } from './useData';
+import { useClient } from 'urql';
 
 type CollectionPageProps = {
   collection: string;
@@ -388,6 +389,7 @@ function CollectionTable(
 ) {
   let { searchTerm, columnDescriptors } = props;
 
+  const client = useClient();
   const repoInfo = useRepoInfo();
   const currentBranch = useCurrentBranch();
   let isLocalMode = isLocalConfig(props.config);
@@ -433,27 +435,22 @@ function CollectionTable(
   const mainFiles = useData(
     useCallback(async () => {
       const formatInfo = getCollectionFormat(props.config, props.collection);
-      const entries = await Promise.all(
-        entriesWithStatus.map(async entry => {
-          return [
-            entry.name,
-            await fetchBlob(
-              props.config,
-              entry.sha,
-              getEntryDataFilepath(
-                getCollectionItemPath(
-                  props.config,
-                  props.collection,
-                  entry.name
-                ),
-                formatInfo
-              ),
-              baseCommit,
-              repoInfo,
-              router.basePath
-            ),
-          ] as const;
-        })
+      const blobsByOid = await fetchBlobsBatch(
+        props.config,
+        client,
+        entriesWithStatus.map(entry => ({
+          oid: entry.sha,
+          filepath: getEntryDataFilepath(
+            getCollectionItemPath(props.config, props.collection, entry.name),
+            formatInfo
+          ),
+        })),
+        baseCommit,
+        repoInfo,
+        router.basePath
+      );
+      const entries = entriesWithStatus.map(
+        entry => [entry.name, blobsByOid.get(entry.sha)!] as const
       );
       const glob = getSlugGlobForCollection(props.config, props.collection);
       const rootSchema = { kind: 'object' as const, fields: collection.schema };
@@ -467,9 +464,19 @@ function CollectionTable(
             [],
             [],
             (schema, value, path) => {
-              if (schema.formKind === 'asset' || schema.formKind === 'assets') {
-                // cheap: fields.content()'s reader just returns the raw
-                // markdown string, no document parsing — see content/index.tsx
+              if (schema.formKind === 'asset') {
+                return schema.reader.parse(value);
+              }
+              if (schema.formKind === 'assets') {
+                if (schema.contentExtension) {
+                  // fields.content() stores only lightweight
+                  // { wordCount, charCount } metadata inline — the actual
+                  // HTML body lives in its own file that the table listing
+                  // deliberately doesn't fetch, see mainFiles above
+                  return value;
+                }
+                // cheap: markdoc.inline()'s reader just returns the raw
+                // text as-is, no document parsing needed
                 return schema.reader.parse(value);
               }
               if (schema.formKind === 'content') {
@@ -506,6 +513,7 @@ function CollectionTable(
       baseCommit,
       repoInfo,
       router.basePath,
+      client,
     ])
   );
 

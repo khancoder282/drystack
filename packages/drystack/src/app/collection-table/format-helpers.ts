@@ -37,12 +37,29 @@ export function stripHtmlForPreview(raw: string): string {
     .trim();
 }
 
-export function summarizeContent(raw: string): string {
-  const plainText = stripHtmlForPreview(raw);
-  if (!plainText) return 'Empty';
-  const words = plainText.split(/\s+/).length;
-  const chars = plainText.length;
+export function countWordsAndChars(
+  plainText: string
+): { wordCount: number; charCount: number } {
+  if (!plainText) return { wordCount: 0, charCount: 0 };
+  return { wordCount: plainText.split(/\s+/).length, charCount: plainText.length };
+}
+
+// `fields.content()` precomputes { wordCount, charCount } at save time (see
+// form/fields/content/index.tsx) so the table can show a summary without
+// fetching the (now separate) HTML file — but `markdoc.inline()` still
+// stores its value as a raw string inline, so this accepts either shape.
+export function summarizeContent(
+  value: string | { wordCount: number; charCount: number } | undefined | null
+): string {
+  const counts =
+    typeof value === 'string'
+      ? countWordsAndChars(stripHtmlForPreview(value))
+      : value;
+  if (!counts || (!counts.wordCount && !counts.charCount)) return 'Empty';
+  const { wordCount, charCount } = counts;
   const charLabel =
-    chars >= 1000 ? `${(chars / 1000).toFixed(1)}k characters` : `${chars} characters`;
-  return `${charLabel} - ${words} word${words === 1 ? '' : 's'}`;
+    charCount >= 1000
+      ? `${(charCount / 1000).toFixed(1)}k characters`
+      : `${charCount} characters`;
+  return `${charLabel} - ${wordCount} word${wordCount === 1 ? '' : 's'}`;
 }

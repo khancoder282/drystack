@@ -1,6 +1,5 @@
 import { Mark, MarkType, Node, ResolvedPos } from 'prosemirror-model';
 import { EditorState, NodeSelection, TextSelection } from 'prosemirror-state';
-import { toggleHeader } from 'prosemirror-tables';
 import { ReactElement, useMemo, useState } from 'react';
 
 import { ActionButton } from '@keystar/ui/button';
@@ -9,7 +8,6 @@ import { Icon } from '@keystar/ui/icon';
 import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { Divider, Flex } from '@keystar/ui/layout';
 import { TooltipTrigger, Tooltip } from '@keystar/ui/tooltip';
-import { sheetIcon } from '@keystar/ui/icon/icons/sheetIcon';
 
 import {
   useEditorDispatchCommand,
@@ -20,6 +18,7 @@ import { EditorSchema, getEditorSchema } from '../schema';
 import { LinkToolbar } from './link-toolbar';
 import { useEditorReferenceElement } from './reference';
 import { ImagePopover } from './images';
+import { CellOptionsMenu, isSelectionInTableCell } from './table';
 import { Dialog, DialogContainer } from '@keystar/ui/dialog';
 import { FormValue } from '../FormValue';
 import { Heading } from '@keystar/ui/typography';
@@ -153,27 +152,12 @@ const popoverComponents: Record<
   image: ImagePopover,
   table: function TablePopover(props) {
     const dispatchCommand = useEditorDispatchCommand();
-    const schema = useEditorSchema();
 
     return (
       <Flex gap="regular" padding="regular">
-        {schema.format === 'markdoc' && (
+        {isSelectionInTableCell(props.state) && (
           <>
-            <TooltipTrigger>
-              <ActionButton
-                prominence="low"
-                isSelected={
-                  props.node.firstChild?.firstChild?.type ===
-                  schema.nodes.table_header
-                }
-                onPress={() => {
-                  dispatchCommand(toggleHeader('row'));
-                }}
-              >
-                <Icon src={sheetIcon} />
-              </ActionButton>
-              <Tooltip>Header row</Tooltip>
-            </TooltipTrigger>
+            <CellOptionsMenu node={props.node} />
             <Divider orientation="vertical" />
           </>
         )}

@@ -345,10 +345,13 @@ const readItem = cache(async function readItem(
       [],
       [],
       (schema, value, path, pathWithArrayFieldSlugs) => {
-        if (schema.formKind === 'asset' || schema.formKind === 'assets') {
+        if (schema.formKind === 'asset') {
           return schema.reader.parse(value);
         }
-        if (schema.formKind === 'content') {
+        if (schema.formKind === 'assets' && !schema.contentExtension) {
+          return schema.reader.parse(value);
+        }
+        if (schema.formKind === 'content' || schema.formKind === 'assets') {
           contentFieldPathsToEagerlyResolve?.push(path);
           return async () => {
             let content: undefined | Uint8Array;

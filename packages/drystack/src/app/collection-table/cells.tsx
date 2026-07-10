@@ -111,12 +111,22 @@ export function FileCell(props: { path: string | null }) {
 }
 
 export function ContentSizeCell(props: { value: unknown }) {
-  if (typeof props.value !== 'string' || !props.value.trim()) {
+  const value = props.value as
+    | string
+    | { wordCount: number; charCount: number }
+    | undefined
+    | null;
+  const isEmpty =
+    value == null ||
+    (typeof value === 'string'
+      ? !value.trim()
+      : !value.wordCount && !value.charCount);
+  if (isEmpty) {
     return <EmptyCell />;
   }
   return (
     <Flex direction="column" gap="xsmall" minWidth={0}>
-      <Text UNSAFE_className={lineClampStyle}>{summarizeContent(props.value)}</Text>
+      <Text UNSAFE_className={lineClampStyle}>{summarizeContent(value)}</Text>
     </Flex>
   );
 }

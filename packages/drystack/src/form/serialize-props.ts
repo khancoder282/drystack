@@ -42,23 +42,17 @@ export function serializeProps(
           return forYaml;
         }
         if (schema.formKind === 'content' || schema.formKind === 'assets') {
-          let other: ReadonlyMap<string, Uint8Array>, external, forYaml;
-          if (schema.formKind === 'content') {
-            const out = schema.serialize(value, { slug });
-            if (out.content) {
-              extraFiles.push({
-                path:
-                  getPropPathPortion(propPath, rootSchema, rootValue) +
-                  schema.contentExtension,
-                contents: out.content,
-                parent: undefined,
-              });
-            }
-            ({ value: forYaml, other, external } = out);
-          } else {
-            const out = schema.serialize(value, { slug });
-            ({ value: forYaml, other, external } = out);
+          const out = schema.serialize(value, { slug });
+          if (out.content !== undefined && schema.contentExtension) {
+            extraFiles.push({
+              path:
+                getPropPathPortion(propPath, rootSchema, rootValue) +
+                schema.contentExtension,
+              contents: out.content,
+              parent: undefined,
+            });
           }
+          const { value: forYaml, other, external } = out;
 
           for (const [key, contents] of other) {
             extraFiles.push({

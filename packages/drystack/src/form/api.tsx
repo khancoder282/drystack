@@ -161,12 +161,20 @@ export type AssetsFormField<
   // 'content'` can auto-detect it as the main content pane. other assets
   // fields (image/file) leave this unset.
   htmlContentEditor?: boolean;
+  // when set, the field's main value is split out into its own file (like
+  // `ContentFormField.contentExtension`) instead of living inline in the
+  // entry's YAML/JSON — `fields.content()` sets this to store the HTML body
+  // separately and keep only lightweight metadata (e.g. word/char counts) in
+  // `value`. Fields that don't set this (e.g. `markdoc.inline()`) keep their
+  // whole value inline, as before.
+  contentExtension?: string;
 
   Input(props: FormFieldInputProps<ParsedValue>): ReactElement | null;
   defaultValue(): ParsedValue;
   parse(
     value: FormFieldStoredValue,
     args: {
+      content?: Uint8Array | undefined;
       other: ReadonlyMap<string, Uint8Array>;
       external: ReadonlyMap<string, ReadonlyMap<string, Uint8Array>>;
       slug: string | undefined;
@@ -179,13 +187,17 @@ export type AssetsFormField<
     }
   ): {
     value: FormFieldStoredValue;
+    content?: Uint8Array | undefined;
     other: ReadonlyMap<string, Uint8Array>;
     external: ReadonlyMap<string, ReadonlyMap<string, Uint8Array>>;
   };
 
   validate(value: ParsedValue): ValidatedValue;
   reader: {
-    parse(value: FormFieldStoredValue): ReaderValue;
+    parse(
+      value: FormFieldStoredValue,
+      extra?: { content?: Uint8Array | undefined }
+    ): ReaderValue;
   };
   collaboration?: {
     toYjs: (value: ParsedValue) => unknown;
