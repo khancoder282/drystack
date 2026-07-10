@@ -25,6 +25,9 @@ type Dragging = {
   minPx: number;
   leftCells: CellRef[];
   rightCells: CellRef[];
+  // updated on every pointermove — `decorations()` reads this to render the
+  // live cell-width preview (see `buildDragDecorations`)
+  currentClientX: number;
   leftCol: number;
   rightCol: number;
   // every column's width at drag start (see resolveEffectiveColumnWidths),
@@ -302,19 +305,56 @@ function draggedWidths(dragging: Dragging, clientX: number) {
   };
 }
 
+// Live preview during a drag, cell half: renders a `style="width:…%"`
+// override on every dragged cell via decorations — the ProseMirror-
+// sanctioned way to apply a transient visual change. A raw DOM edit to a
+// cell doesn't work here: table_cell/table_header have no custom NodeView
+// (contrast the colgroup, see `TableColgroupNodeView`), so there's nowhere
+// to add an `ignoreMutation` override, and ProseMirror's DOM-mutation
+// observer detects the unprotected edit and reverts it within
+// milliseconds. `style` attrs from a node decoration are appended after
+// (and so, per CSS cascade, win over) the cell's own `toDOM`-rendered
+// `style`, and — being decorations rather than raw edits — never trip the
+// observer.
+//
+// This alone isn't sufficient, though: `table-layout: fixed` gives an
+// explicit `<colgroup>` width priority over a cell's own `style="width"`
+// (CSS2.1 17.5.2.1), so once a column has already been resized once and
+// gained a colgroup width, decorating its cells has no visible effect on
+// its own — see the companion colgroup mutation in `move` (in
+// `startDrag`), which is a raw DOM edit but a safe one (protected by
+// `TableColgroupNodeView.ignoreMutation`). The two are kept in sync every
+// frame; empirically (verified in Chromium), leaving either one on a
+// stale value while the other changes renders a stale mix of old-and-new
+// column widths.
+function buildDragDecorations(state: EditorState, dragging: Dragging): Decoration[] {
+  const { leftPct, rightPct } = draggedWidths(dragging, dragging.currentClientX);
+  const decorations: Decoration[] = [];
+  const addRange = (cells: CellRef[], pct: number) => {
+    for (const { pos } of cells) {
+      const node = state.doc.nodeAt(pos);
+      if (!node) continue;
+      decorations.push(
+        Decoration.node(pos, pos + node.nodeSize, { style: `width:${pct}%` })
+      );
+    }
+  };
+  addRange(dragging.leftCells, leftPct);
+  addRange(dragging.rightCells, rightPct);
+  return decorations;
+}
+
 // Applies a plugin-only meta transaction directly via `view.updateState`
 // instead of `view.dispatch`. This app's `dispatchTransaction` (see
 // editor-view.tsx) forwards every dispatched transaction to the form's
-// `onChange`, which is a React state update — appropriate for the
-// occasional hover-boundary or drag-start update this is used for, but not
-// for anything that fires on every animation frame. That's why the drag
-// preview itself (see `move` in `startDrag`) mutates the colgroup DOM
-// directly instead of routing through here — funneling 60/sec updates
-// through React was enough to trip its nested-update guard ("Maximum
-// update depth exceeded"). `updateState` re-syncs the view's own
-// DOM/decorations exactly like `dispatch` would, without involving React —
-// the only transaction that should reach `dispatch` is the final commit on
-// drop.
+// `onChange`, which is a React state update — fine for the occasional
+// hover-boundary change, but the drag preview fires on every animation
+// frame, and funneling that through React (60/sec, marking the form dirty
+// the whole time for a change that isn't even part of the document) was
+// enough to trip React's nested-update guard ("Maximum update depth
+// exceeded"). `updateState` re-syncs the view's own DOM/decorations
+// exactly like `dispatch` would, without involving React at all — the only
+// transaction that should reach `dispatch` is the final commit on drop.
 function updateViewMeta(view: EditorView, meta: unknown) {
   const tr = view.state.tr.setMeta(tableColumnResizingKey, meta);
   view.updateState(view.state.apply(tr));
@@ -362,17 +402,14 @@ function startDrag(view: EditorView, activeHandle: number, event: PointerEvent) 
   const rightDom = view.nodeDOM(tableStart + rightRelPos) as HTMLElement | null;
   if (!leftDom || !rightDom || !tableDom) return;
 
-  // the live preview writes straight into these two `<col>` elements (see
-  // `move` below) instead of decorating the dragged cells. Under
-  // `table-layout: fixed`, an explicit `<colgroup>` width always wins over a
-  // cell's own `style="width"` (CSS2.1 17.5.2.1) — so once a column has been
-  // resized once and gained a colgroup width, decorating its cells on a
-  // later drag has no visible effect and the preview desyncs from the
-  // pointer. `TableColgroupNodeView.ignoreMutation` already tells
-  // ProseMirror's DOM observer to leave attribute changes inside the
-  // colgroup alone, so mutating it here directly is safe — `syncColgroup`
-  // overwrites it with the authoritative value on the next real state
-  // update (i.e. on commit, see `commitResize`).
+  // The live preview writes straight into these two `<col>` elements (see
+  // `move` below), in lockstep with the per-cell decorations built by
+  // `buildDragDecorations` — see the comment there for why a table needs
+  // *both* kept in sync every frame, not just one. `TableColgroupNodeView
+  // .ignoreMutation` tells ProseMirror's DOM observer to leave attribute
+  // changes inside the colgroup alone, so mutating it here directly is
+  // safe — `syncColgroup` overwrites it with the authoritative value on
+  // the next real state update (i.e. on commit, see `commitResize`).
   const colgroupCols = tableDom.querySelector(':scope > colgroup')?.children;
 
   const leftPx = leftDom.getBoundingClientRect().width;
@@ -389,6 +426,7 @@ function startDrag(view: EditorView, activeHandle: number, event: PointerEvent) 
     minPx,
     leftCells,
     rightCells,
+    currentClientX: event.clientX,
     leftCol,
     rightCol,
     effectiveWidths: resolveEffectiveColumnWidths(table),
@@ -404,12 +442,18 @@ function startDrag(view: EditorView, activeHandle: number, event: PointerEvent) 
     if (rafId != null) return;
     rafId = win.requestAnimationFrame(() => {
       rafId = null;
-      if (!colgroupCols) return;
+      // refreshes the cell decorations (see buildDragDecorations) — must
+      // come before the colgroup write below, since a state update may
+      // re-invoke TableColgroupNodeView.update and reset the colgroup to
+      // its last-committed (stale) value as a side effect
+      updateViewMeta(view, { updateDragX: lastClientX });
       const { leftPct, rightPct } = draggedWidths(dragging, lastClientX);
-      const leftColEl = colgroupCols[leftCol] as HTMLElement | undefined;
-      const rightColEl = colgroupCols[rightCol] as HTMLElement | undefined;
-      if (leftColEl) leftColEl.style.width = `${leftPct}%`;
-      if (rightColEl) rightColEl.style.width = `${rightPct}%`;
+      if (colgroupCols) {
+        const leftColEl = colgroupCols[leftCol] as HTMLElement | undefined;
+        const rightColEl = colgroupCols[rightCol] as HTMLElement | undefined;
+        if (leftColEl) leftColEl.style.width = `${leftPct}%`;
+        if (rightColEl) rightColEl.style.width = `${rightPct}%`;
+      }
     });
   };
   const finish = () => {
@@ -478,6 +522,12 @@ export function tableColumnResizing(): Plugin<PluginState> {
         if (meta && 'setDragging' in meta) {
           return { ...prev, dragging: meta.setDragging };
         }
+        if (meta && 'updateDragX' in meta && prev.dragging) {
+          return {
+            ...prev,
+            dragging: { ...prev.dragging, currentClientX: meta.updateDragX },
+          };
+        }
         if (prev.activeHandle > -1 && tr.docChanged) {
           const mapped = tr.mapping.map(prev.activeHandle, -1);
           return {
@@ -498,7 +548,9 @@ export function tableColumnResizing(): Plugin<PluginState> {
       decorations(state) {
         const pluginState = tableColumnResizingKey.getState(state);
         if (!pluginState) return;
-        return buildHandleDecorations(state, pluginState);
+        const handles = buildHandleDecorations(state, pluginState);
+        if (!pluginState.dragging) return handles;
+        return handles.add(state.doc, buildDragDecorations(state, pluginState.dragging));
       },
       handleDOMEvents: {
         pointermove(view, event) {

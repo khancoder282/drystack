@@ -268,7 +268,7 @@ function SingletonPageInner(
         </ActionGroup>
         <Button
           form={formID}
-          isDisabled={props.updateResult.kind === 'loading'}
+          isPending={props.updateResult.kind === 'loading'}
           prominence="high"
           type="submit"
         >

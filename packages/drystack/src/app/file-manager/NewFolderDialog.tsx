@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { Button, ButtonGroup } from '@keystar/ui/button';
+import { Button, ButtonGroup, ActionButton } from '@keystar/ui/button';
 import { Dialog } from '@keystar/ui/dialog';
+import { FileTrigger } from '@keystar/ui/drag-and-drop';
+import { Icon } from '@keystar/ui/icon';
+import { fileUpIcon } from '@keystar/ui/icon/icons/fileUpIcon';
+import { Flex } from '@keystar/ui/layout';
 import { Content } from '@keystar/ui/slots';
-import { Heading } from '@keystar/ui/typography';
+import { Heading, Text } from '@keystar/ui/typography';
 import { TextField } from '@keystar/ui/text-field';
 
 function validateName(name: string, existingNames: ReadonlySet<string>) {
@@ -20,11 +24,15 @@ export function NewFolderDialog(props: {
   existingNames: ReadonlySet<string>;
   isCreating: boolean;
   onCancel: () => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, files: File[]) => void;
 }) {
   const [name, setName] = useState('');
+  // a folder can't exist empty in this app's git-backed storage, so
+  // creating one means seeding it with at least one real file
+  const [files, setFiles] = useState<File[]>([]);
   const trimmed = name.trim();
   const error = validateName(trimmed, props.existingNames);
+  const canCreate = !props.isCreating && !!trimmed && !error && files.length > 0;
 
   return (
     <Dialog size="small">
@@ -33,19 +41,37 @@ export function NewFolderDialog(props: {
         onSubmit={event => {
           if (event.target !== event.currentTarget) return;
           event.preventDefault();
-          if (!trimmed || error) return;
-          props.onCreate(trimmed);
+          if (!canCreate) return;
+          props.onCreate(trimmed, files);
         }}
       >
         <Heading>New folder</Heading>
         <Content>
-          <TextField
-            label="Folder name"
-            value={name}
-            onChange={setName}
-            autoFocus
-            errorMessage={error}
-          />
+          <Flex direction="column" gap="regular">
+            <TextField
+              label="Folder name"
+              value={name}
+              onChange={setName}
+              autoFocus
+              errorMessage={error}
+            />
+            <FileTrigger
+              allowsMultiple
+              onSelect={selected => setFiles(selected ? Array.from(selected) : [])}
+            >
+              <ActionButton>
+                <Icon src={fileUpIcon} />
+                <Text>Choose files…</Text>
+              </ActionButton>
+            </FileTrigger>
+            <Text size="small" color="neutralSecondary">
+              {files.length === 0
+                ? 'A folder needs at least one file — GitHub can’t store empty folders.'
+                : `${files.length} file${files.length === 1 ? '' : 's'} selected: ${files
+                    .map(f => f.name)
+                    .join(', ')}`}
+            </Text>
+          </Flex>
         </Content>
         <ButtonGroup>
           <Button onPress={props.onCancel} isDisabled={props.isCreating}>
@@ -54,7 +80,8 @@ export function NewFolderDialog(props: {
           <Button
             type="submit"
             prominence="high"
-            isDisabled={props.isCreating || !trimmed || !!error}
+            isDisabled={!canCreate}
+            isPending={props.isCreating}
           >
             Create
           </Button>

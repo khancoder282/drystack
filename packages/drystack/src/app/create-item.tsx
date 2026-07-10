@@ -555,7 +555,7 @@ function CreateItemInner(props: {
             )}
           </ActionGroup>
           <Button
-            isDisabled={isLoading}
+            isPending={isLoading}
             prominence="high"
             type="submit"
             form={formID}

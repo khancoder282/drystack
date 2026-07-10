@@ -719,7 +719,7 @@ function HeaderActions(props: {
       </ActionGroup>
       <Button
         form={formID}
-        isDisabled={isLoading}
+        isPending={isLoading}
         prominence="high"
         type="submit"
       >
@@ -823,17 +823,10 @@ export function CreateBranchDuringUpdateDialog(props: {
           </Flex>
         </Content>
         <ButtonGroup>
-          {isLoading && (
-            <ProgressCircle
-              isIndeterminate
-              size="small"
-              aria-label="Creating Branch"
-            />
-          )}
           <Button isDisabled={isLoading} onPress={props.onDismiss}>
             {stringFormatter.format('cancel')}
           </Button>
-          <Button isDisabled={isLoading} prominence="high" type="submit">
+          <Button isPending={isLoading} prominence="high" type="submit">
             Create branch and save
           </Button>
         </ButtonGroup>

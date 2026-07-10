@@ -40,7 +40,6 @@ import { useSearchResults } from "./useSearch";
 import { useFileManagerUpload } from "./useFileManagerUpload";
 import { UploadConflictDialog } from "./UploadConflictDialog";
 import { NewFolderDialog } from "./NewFolderDialog";
-import { useCreateFolder } from "./useCreateFolder";
 import { AssetPreviewOverlay } from "./AssetPreviewOverlay";
 import { descendantBlobPaths, useTrash } from "./useTrash";
 
@@ -100,7 +99,6 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   const { readBytes, tree } = useAssetActions();
   const { trashPaths, restorePaths, permanentlyDelete } = useTrash();
   const upload = useFileManagerUpload();
-  const { createFolder } = useCreateFolder();
 
   const hasLocalTab = mode.kind === "picker" && !!mode.local;
   const defaultTab = mode.kind === "picker" && mode.local ? "local" : "library";
@@ -270,12 +268,21 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     }
   }
 
-  async function handleCreateFolder(name: string) {
+  // there's no such thing as an empty folder in this app's git-backed
+  // storage model, so "creating a folder" means uploading the files the
+  // user picked straight into the not-yet-existing directory — the new
+  // path can't collide with anything, so conflict resolution never fires
+  async function handleCreateFolder(name: string, files: File[]) {
     if (!currentDir) return;
     setIsCreatingFolder(true);
     try {
-      const result = await createFolder(currentDir, name);
-      await afterMutation(result);
+      const result = await upload.startUpload(
+        files,
+        `${currentDir}/${name}`,
+        new Set(),
+      );
+      if (mode.kind === "page") await afterMutation(result);
+      else if (result) cacheSessionUploads(result.uploaded);
       setNewFolderDialogOpen(false);
       navigateIntoSubfolder(name);
     } finally {
@@ -814,6 +821,17 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
               if (mode.kind === "page") await afterMutation(result);
               else if (result) cacheSessionUploads(result.uploaded);
             }}
+          />
+        )}
+      </DialogContainer>
+
+      <DialogContainer onDismiss={() => setNewFolderDialogOpen(false)}>
+        {newFolderDialogOpen && (
+          <NewFolderDialog
+            existingNames={new Set(activeDirChildren.map((c) => c.name))}
+            isCreating={isCreatingFolder}
+            onCancel={() => setNewFolderDialogOpen(false)}
+            onCreate={handleCreateFolder}
           />
         )}
       </DialogContainer>

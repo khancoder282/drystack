@@ -7,6 +7,7 @@ import { useState, useEffect, useReducer, useId } from 'react';
 import { FormFieldInputProps } from '../../api';
 import { openMediaLibrary } from '../../../app/media-library/bridge';
 import { useMediaLibraryPreviewURL } from '../../../app/media-library/useMediaLibraryPreviewURL';
+import { useEntryDirectoryContext } from '../../../app/entry-form';
 
 export function getUploadedFileObject(
   accept: string
@@ -84,6 +85,7 @@ export function ImageFieldInput(
   );
   const treeObjectUrl = useMediaLibraryPreviewURL(value);
   const objectUrl = freshObjectUrl ?? treeObjectUrl;
+  const entryDirectory = useEntryDirectoryContext();
   const labelId = useId();
   const descriptionId = useId();
   return (
@@ -110,7 +112,12 @@ export function ImageFieldInput(
         <ActionButton
           onPress={async () => {
             try {
-              const picked = await openMediaLibrary({ accept: 'image' });
+              const picked = await openMediaLibrary({
+                accept: 'image',
+                local: entryDirectory
+                  ? { directory: `${entryDirectory}/assets`, label: 'This entry' }
+                  : undefined,
+              });
               onBlur();
               if (picked) {
                 setFreshUpload({ path: picked.path, content: picked.content });

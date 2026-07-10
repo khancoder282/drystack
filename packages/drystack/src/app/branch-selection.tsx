@@ -9,9 +9,8 @@ import { Dialog } from '@keystar/ui/dialog';
 import { gitBranchIcon } from '@keystar/ui/icon/icons/gitBranchIcon';
 import { Icon } from '@keystar/ui/icon';
 import { Flex, Grid } from '@keystar/ui/layout';
-import { ProgressCircle } from '@keystar/ui/progress';
 import { Radio, RadioGroup } from '@keystar/ui/radio';
-import { Content, Footer } from '@keystar/ui/slots';
+import { Content } from '@keystar/ui/slots';
 import { css, tokenSchema } from '@keystar/ui/style';
 import { TextField } from '@keystar/ui/text-field';
 import { Heading, Text } from '@keystar/ui/typography';
@@ -206,21 +205,12 @@ export function CreateBranchDialog(props: {
           )}
         </Content>
 
-        <Footer UNSAFE_style={{ justifyContent: 'flex-end' }}>
-          {fetching && (
-            <ProgressCircle
-              aria-labelledby={createBranchSubmitButtonId}
-              isIndeterminate
-              size="small"
-            />
-          )}
-        </Footer>
         <ButtonGroup>
           <Button onPress={props.onDismiss} isDisabled={fetching}>
             {stringFormatter.format('cancel')}
           </Button>
           <Button
-            isDisabled={fetching}
+            isPending={fetching}
             prominence="high"
             type="submit"
             id={createBranchSubmitButtonId}
