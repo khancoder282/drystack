@@ -65,8 +65,19 @@ export function AssetPreviewOverlay(props: {
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   const index = siblings.indexOf(path);
-  const canPrev = index > 0;
-  const canNext = index >= 0 && index < siblings.length - 1;
+  const canLoop = siblings.length > 1;
+  const canPrev = canLoop;
+  const canNext = canLoop;
+
+  function prevPath() {
+    if (index < 0) return undefined;
+    return siblings[(index - 1 + siblings.length) % siblings.length];
+  }
+
+  function nextPath() {
+    if (index < 0) return undefined;
+    return siblings[(index + 1) % siblings.length];
+  }
 
   function setZoom(updater: number | ((current: number) => number)) {
     setZoomRaw(prev => {
@@ -84,10 +95,10 @@ export function AssetPreviewOverlay(props: {
     else setZoomInput(String(zoom));
   }
 
-  function goTo(nextPath: string | undefined) {
-    if (!nextPath) return;
+  function goTo(target: string | undefined) {
+    if (!target) return;
     setZoom(100);
-    onNavigate(nextPath);
+    onNavigate(target);
   }
 
   // mouse-wheel zoom — attached as a native, non-passive listener so
@@ -115,8 +126,8 @@ export function AssetPreviewOverlay(props: {
         target instanceof HTMLElement &&
         (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (isTyping) return;
-      if (event.key === 'ArrowLeft' && canPrev) goTo(siblings[index - 1]);
-      else if (event.key === 'ArrowRight' && canNext) goTo(siblings[index + 1]);
+      if (event.key === 'ArrowLeft' && canPrev) goTo(prevPath());
+      else if (event.key === 'ArrowRight' && canNext) goTo(nextPath());
       else if (isImage && (event.key === '+' || event.key === '=')) {
         event.preventDefault();
         setZoom(z => z + ZOOM_STEP);
@@ -141,14 +152,14 @@ export function AssetPreviewOverlay(props: {
       }}
     >
       <Flex
-        alignItems="center"
+        alignItems={{mobile: "flex-end", tablet: "center"}}
         justifyContent="space-between"
         gap="regular"
-        wrap
         borderBottom="muted"
+        direction={{mobile: "column", tablet: "row"}}
         UNSAFE_style={{ padding: 12, flexShrink: 0 }}
       >
-        <Flex alignItems="center" gap="regular" UNSAFE_style={{ minWidth: 0 }}>
+        <Flex alignItems="center" gap="regular" UNSAFE_style={{ minWidth: 0, maxWidth: '100%' }}>
           <ActionButton aria-label="Close" onPress={onClose}>
             <Icon src={xIcon} />
           </ActionButton>
@@ -164,7 +175,7 @@ export function AssetPreviewOverlay(props: {
           </Text>
         </Flex>
 
-        <Flex alignItems="center" gap="regular" wrap>
+        <Flex alignItems="center" gap="regular">
           {isImage && (
             <Flex alignItems="center" gap="small">
               <ActionButton
@@ -230,7 +241,7 @@ export function AssetPreviewOverlay(props: {
         {canPrev && (
           <ActionButton
             aria-label="Previous image"
-            onPress={() => goTo(siblings[index - 1])}
+            onPress={() => goTo(prevPath())}
             UNSAFE_style={{
               ...navButtonStyle,
               position: 'absolute',
@@ -245,7 +256,7 @@ export function AssetPreviewOverlay(props: {
         {canNext && (
           <ActionButton
             aria-label="Next image"
-            onPress={() => goTo(siblings[index + 1])}
+            onPress={() => goTo(nextPath())}
             UNSAFE_style={{
               ...navButtonStyle,
               position: 'absolute',
@@ -300,6 +311,7 @@ export function AssetPreviewOverlay(props: {
       {siblings.length > 1 && (
         <Flex
           gap="small"
+          justifyContent="center"
           borderTop="muted"
           UNSAFE_style={{
             padding: 12,

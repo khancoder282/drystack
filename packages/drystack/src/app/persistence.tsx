@@ -105,7 +105,12 @@ let viewsStore: UseStore;
 
 function getViewsStore() {
   if (!viewsStore) {
-    viewsStore = createStore('drystack', 'collection-views');
+    // separate database (not just a separate store within 'drystack') —
+    // idb-keyval's createStore only creates the object store during
+    // onupgradeneeded, which won't fire for existing users' 'drystack' DB
+    // since opening it here doesn't bump its version. A distinct DB name
+    // guarantees onupgradeneeded runs and the store gets created.
+    viewsStore = createStore('drystack-views', 'collection-views');
   }
   return viewsStore;
 }

@@ -238,6 +238,7 @@ function CollectionToolbar(props: {
   return (
     <Flex
       alignItems="center"
+      justifyContent="flex-end"
       gap="regular"
       paddingTop={{ tablet: 'large' }}
       UNSAFE_className={css({
