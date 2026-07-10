@@ -5,8 +5,8 @@ export default config({
     kind: "local",
   },
   singletons: {
-    demo: singleton({
-      label: "Demo",
+    home: singleton({
+      label: "Home",
       schema: {
         heading: fields.text({
           label: "Heading",
@@ -30,8 +30,9 @@ export default config({
       entryLayout: "content",
       schema: {
         title: fields.slug({ name: { label: "Title" } }),
-        description: fields.text({ label: "Description", validation: {} }),
         cover: fields.image({ label: "Cover image" }),
+        description: fields.text({ label: "Description", validation: {} }),
+        publish: fields.checkbox({label: "Publish", defaultValue: false}),
         body: fields.content({ label: "Body" }),
       },
     }),
