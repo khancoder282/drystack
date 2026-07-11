@@ -6,6 +6,19 @@ const BUILD_VERSION_KEY = 'buildVersion';
 let editing = false;
 let onChangeCallback: (() => void) | undefined;
 
+// The server-rendered (on-disk) value for each editable key, captured before
+// any pending edit is painted over it. Lets the review dialog show a
+// before/after diff entirely client-side — no file-read round-trip needed.
+const originalValues = new Map<string, string>();
+
+function rememberOriginal(key: string, value: string) {
+  if (!originalValues.has(key)) originalValues.set(key, value);
+}
+
+export function getOriginalValue(key: string): string | undefined {
+  return originalValues.get(key);
+}
+
 function handleInput(e: Event) {
   const el = (e.target as HTMLElement)?.closest<HTMLElement>('[data-dry]');
   if (!el) return;
@@ -23,6 +36,10 @@ export function enableEditing(onChange?: () => void) {
   onChangeCallback = onChange;
   document.body.classList.add('editing');
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
+    const key = el.getAttribute('data-dry');
+    // No pending edit was painted here, so the current text is the on-disk
+    // value — safe to snapshot now as the diff baseline.
+    if (key) rememberOriginal(key, el.textContent ?? '');
     el.contentEditable = 'plaintext-only';
     // Firefox versions without plaintext-only support silently ignore it.
     if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
@@ -76,7 +93,11 @@ export async function applyPendingEdits(): Promise<number> {
     const el = document.querySelector<HTMLElement>(
       `[data-dry="${CSS.escape(edit.key)}"]`
     );
-    if (el) el.textContent = edit.value;
+    if (el) {
+      // Capture the on-disk value before overwriting it with the pending edit.
+      rememberOriginal(edit.key, el.textContent ?? '');
+      el.textContent = edit.value;
+    }
   }
   return edits.length;
 }

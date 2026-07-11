@@ -1,21 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { KeystarProvider } from '@keystar/ui/core';
+import { Toaster } from '@keystar/ui/toast';
 import type { Config } from '@drystack/core';
 import { Toolbar } from './Toolbar';
 import { applyPendingEdits, discardEditsIfBuildIsNewer } from './bind';
+// Raw CSS string (Vite ?inline) — injected into the host page's <head> below.
+import editorStyles from './editor.css?inline';
 
 const ROOT_ID = 'drystack-editor-root';
 
-const OUTLINE_STYLE = `
-  body.editing [data-dry] {
-    outline: 2px solid rgba(0, 128, 255, 0.5);
-    outline-offset: 2px;
-    cursor: text;
-  }
-  body.editing [data-dry]:hover {
-    outline-color: rgba(0, 128, 255, 0.8);
-  }
-`;
+function prefersDark() {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  );
+}
+
+function EditorRoot({ config }: { config: Config<any, any> }) {
+  const [scheme, setScheme] = useState<'light' | 'dark'>(
+    prefersDark() ? 'dark' : 'light'
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => setScheme(mq.matches ? 'dark' : 'light');
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return (
+    <KeystarProvider colorScheme={scheme}>
+      <Toolbar config={config} />
+      <Toaster />
+    </KeystarProvider>
+  );
+}
 
 export async function mount(
   config: Config<any, any>,
@@ -27,15 +45,12 @@ export async function mount(
   await applyPendingEdits();
 
   const style = document.createElement('style');
-  style.textContent = OUTLINE_STYLE;
+  style.textContent = editorStyles;
   document.head.appendChild(style);
 
   const host = document.createElement('div');
   host.id = ROOT_ID;
   document.body.appendChild(host);
-  const shadow = host.attachShadow({ mode: 'open' });
-  const mountPoint = document.createElement('div');
-  shadow.appendChild(mountPoint);
 
-  createRoot(mountPoint).render(<Toolbar config={config} />);
+  createRoot(host).render(<EditorRoot config={config} />);
 }

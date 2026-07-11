@@ -1,0 +1,197 @@
+/* Injected into the host page's <head> by editor/index.tsx (imported with
+   ?inline). Covers both the editable-element outlines on the live page and the
+   floating editor UI. The editor renders in the light DOM (no shadow root), so
+   every class here is namespaced `dry-` to avoid colliding with the host
+   site's own styles. Keystar components inside the bar are theme-aware; the raw
+   elements below mirror light/dark via prefers-color-scheme, which is also what
+   drives the KeystarProvider scheme. */
+
+body.editing [data-dry] {
+  outline: 2px solid rgba(0, 128, 255, 0.5);
+  outline-offset: 2px;
+  cursor: text;
+}
+body.editing [data-dry]:hover {
+  outline-color: rgba(0, 128, 255, 0.8);
+}
+.dry-spot-flash {
+  outline: 2px solid #f59e0b !important;
+  outline-offset: 2px;
+  scroll-margin: 80px;
+}
+
+.dry-bar {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Single edit affordance — a Keystar Button forced into a round FAB. The icon
+   morphs (rotate + scale + fade) but the button keeps one constant background:
+   no colour change on toggle. */
+.dry-fab {
+  position: relative !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 0 !important;
+  flex: none;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  background: #2563eb !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28) !important;
+  transition: transform 0.2s ease;
+}
+.dry-fab:hover { transform: scale(1.06); background: #2563eb !important; }
+
+/* Round icon buttons inside the menu (Keystar Buttons, square + 50% radius). */
+.dry-iconbtn {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  flex: none;
+}
+
+.dry-fab-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* The two icons spin in opposite directions as they swap. */
+.dry-fab-icon.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.dry-fab-icon--edit.is-hidden { transform: rotate(-90deg) scale(0.3); }
+.dry-fab-icon--x.is-hidden { transform: rotate(90deg) scale(0.3); }
+
+/* Menu reveal — a true width collapse via animatable grid columns. */
+.dry-menu {
+  display: grid;
+  grid-template-columns: 0fr;
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  transition: grid-template-columns 0.3s ease, opacity 0.25s ease,
+    transform 0.25s ease;
+}
+.dry-menu.is-open {
+  grid-template-columns: 1fr;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.dry-menu-inner {
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Floating count badge, pinned to the top-right of the Review button. */
+.dry-review { position: relative; display: flex; }
+.dry-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Hover dropdown listing the singletons editable on the page. Rendered through
+   a portal to <body> (see Toolbar) so the menu's overflow:hidden — needed for
+   the collapse animation — never clips it. */
+.dry-ref { display: flex; }
+.dry-ref-menu {
+  position: fixed;
+  z-index: 2147483001;
+  min-width: 200px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  /* Portaled to <body>, so the KeystarProvider font no longer cascades here.
+     Match Keystar's default (system) stack used by the bar's buttons. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.dry-ref-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: inherit;
+}
+.dry-ref-item:hover { background: rgba(0, 0, 0, 0.06); }
+.dry-ref-item .dry-ref-name { font-weight: 600; }
+.dry-ref-empty { padding: 8px 10px; font-size: 13px; opacity: 0.6; }
+
+/* Review diff — text colour must follow the theme (dialog content is raw
+   markup, so it doesn't inherit a Keystar text colour). */
+.dry-diff { color: #1f2937; }
+
+/* Review changes = one accordion item per edited key (native <details>). */
+.dry-acc {
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dry-acc + .dry-acc { margin-top: 8px; }
+.dry-acc > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+.dry-acc > summary::-webkit-details-marker { display: none; }
+.dry-acc > summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+  opacity: 0.5;
+}
+.dry-acc[open] > summary::before { transform: rotate(45deg); }
+.dry-acc > summary:hover { background: rgba(128, 128, 128, 0.1); }
+.dry-acc .dry-acc-name { font-weight: 400; font-size: 12px; opacity: 0.55; }
+
+@media (prefers-color-scheme: dark) {
+  .dry-ref-menu {
+    background: #1f2937;
+    color: #f3f4f6;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .dry-ref-item:hover { background: rgba(255, 255, 255, 0.08); }
+  .dry-diff { color: #e5e7eb; }
+}

@@ -12,14 +12,11 @@ export default config({
       label: "Home",
       schema: {
         heading: fields.text({
-          label: "Heading",
-          defaultValue: "Hello from Drystack",
+          label: "Heading"
         }),
         description: fields.text({
           label: "Description",
-          multiline: true,
-          defaultValue:
-            "Edit this content in the Keystatic admin UI at /drystack.",
+          multiline: true
         }),
         image: fields.image({ label: "Image" }),
         body: fields.content({ label: "Body" }),

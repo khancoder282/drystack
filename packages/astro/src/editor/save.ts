@@ -41,6 +41,9 @@ function parseRepo(repo: string | { owner: string; name: string }) {
 }
 
 type FileToWrite = { path: string; contents: Uint8Array };
+export type FileDiff = { path: string; before: string; after: string };
+
+const textDecoder = new TextDecoder();
 
 async function githubGraphQL(
   token: string,
@@ -76,7 +79,7 @@ const refQuery = `
 async function getDefaultBranch(token: string, owner: string, name: string) {
   const data = await githubGraphQL(token, refQuery, { owner, name });
   const ref = data?.repository?.defaultBranchRef;
-  if (!ref) throw new Error(`Không tìm thấy nhánh mặc định của ${owner}/${name}`);
+  if (!ref) throw new Error(`Could not find the default branch of ${owner}/${name}`);
   return { branchName: ref.name as string, oid: ref.target.oid as string };
 }
 
@@ -97,19 +100,19 @@ async function readCurrentFile(
     const treeRes = await fetch(`/api/${apiPath}/tree`, {
       headers: { 'no-cors': '1' },
     });
-    if (!treeRes.ok) throw new Error('Không đọc được cây thư mục hiện tại');
+    if (!treeRes.ok) throw new Error('Could not read the current file tree');
     const entries: { path: string; sha: string }[] = await treeRes.json();
     const entry = entries.find(e => e.path === filepath);
     if (!entry) return null;
     const blobRes = await fetch(`/api/${apiPath}/blob/${entry.sha}/${filepath}`, {
       headers: { 'no-cors': '1' },
     });
-    if (!blobRes.ok) throw new Error('Không đọc được nội dung file hiện tại');
+    if (!blobRes.ok) throw new Error('Could not read the current file contents');
     return new Uint8Array(await blobRes.arrayBuffer());
   }
   if (config.storage.kind === 'github') {
     const token = getGithubToken();
-    if (!token) throw new Error('Chưa đăng nhập GitHub');
+    if (!token) throw new Error('Not signed in to GitHub');
     const { owner, name } = parseRepo((config.storage as any).repo);
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/contents/${filepath}?ref=${githubBranchName}`,
@@ -121,19 +124,22 @@ async function readCurrentFile(
       }
     );
     if (res.status === 404) return null;
-    if (!res.ok) throw new Error('Không đọc được nội dung file hiện tại từ GitHub');
+    if (!res.ok) throw new Error('Could not read the current file contents from GitHub');
     const json = await res.json();
     return decodeBase64ToBytes(json.content);
   }
   throw new Error(
-    `dry(): MVP 1 chưa hỗ trợ storage.kind "${(config.storage as any).kind}"`
+    `dry(): MVP 1 does not support storage.kind "${(config.storage as any).kind}"`
   );
 }
 
-async function buildFileChanges(
+// Reads each singleton file the pending edits touch and returns its current
+// (before) text alongside the text it would become once edits are applied.
+// Powers both saving (encode `after`) and the review diff dialog.
+async function collectFileDiffs(
   config: Config<any, any>,
   githubBranchName?: string
-): Promise<FileToWrite[]> {
+): Promise<FileDiff[]> {
   const edits = await getAllEdits();
   const bySingleton = new Map<string, Map<string, string>>();
   for (const edit of edits) {
@@ -144,32 +150,59 @@ async function buildFileChanges(
     bySingleton.get(name)!.set(field, edit.value);
   }
 
-  const files: FileToWrite[] = [];
+  const diffs: FileDiff[] = [];
   for (const [name, fields] of bySingleton) {
     const format = getSingletonFormat(config, name);
     if (format.contentField) {
       throw new Error(
-        `dry(): singleton "${name}" có contentField — chưa hỗ trợ trong MVP 1.`
+        `dry(): singleton "${name}" has a contentField — not supported in MVP 1.`
       );
     }
     const filepath = getEntryDataFilepath(getSingletonPath(config, name), format);
     const raw = await readCurrentFile(config, filepath, githubBranchName);
+    const before = raw ? textDecoder.decode(raw) : '';
     const data = (
       raw ? (loadDataFile(raw, format).loaded ?? {}) : {}
     ) as Record<string, unknown>;
     for (const [field, value] of fields) {
       data[field] = value;
     }
-    files.push({ path: filepath, contents: textEncoder.encode(dump(data)) });
+    diffs.push({ path: filepath, before, after: dump(data) });
   }
-  return files;
+  return diffs;
+}
+
+async function buildFileChanges(
+  config: Config<any, any>,
+  githubBranchName?: string
+): Promise<FileToWrite[]> {
+  const diffs = await collectFileDiffs(config, githubBranchName);
+  return diffs.map(d => ({
+    path: d.path,
+    contents: textEncoder.encode(d.after),
+  }));
+}
+
+// Before/after text for every file the pending edits would change — resolves
+// the GitHub default branch first when needed, mirroring the save path.
+export async function getPendingDiffs(
+  config: Config<any, any>
+): Promise<FileDiff[]> {
+  if (config.storage.kind === 'github') {
+    const token = getGithubToken();
+    if (!token) throw new Error('Not signed in to GitHub');
+    const { owner, name } = parseRepo((config.storage as any).repo);
+    const branch = await getDefaultBranch(token, owner, name);
+    return collectFileDiffs(config, branch.branchName);
+  }
+  return collectFileDiffs(config);
 }
 
 export async function saveEdits(config: Config<any, any>): Promise<void> {
   const isGithub = config.storage.kind === 'github';
   if (isGithub) {
     const token = getGithubToken();
-    if (!token) throw new Error('Chưa đăng nhập GitHub');
+    if (!token) throw new Error('Not signed in to GitHub');
     const { owner, name } = parseRepo((config.storage as any).repo);
     const branch = await getDefaultBranch(token, owner, name);
     const files = await buildFileChanges(config, branch.branchName);
@@ -208,7 +241,7 @@ export async function saveEdits(config: Config<any, any>): Promise<void> {
     if (!res.ok) throw new Error(await res.text());
   } else {
     throw new Error(
-      `dry(): MVP 1 chưa hỗ trợ storage.kind "${(config.storage as any).kind}"`
+      `dry(): MVP 1 does not support storage.kind "${(config.storage as any).kind}"`
     );
   }
   // GitHub mode: keep the edits in IndexedDB. The commit still needs to land
