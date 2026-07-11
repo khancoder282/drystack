@@ -20,6 +20,11 @@ export default config({
         }),
         image: fields.image({ label: "Image" }),
         body: fields.content({ label: "Body" }),
+        arrayData: fields.array(
+          fields.object({
+            name: fields.text({ label: "Name" }),
+          }),
+        ),
       },
     }),
   },
@@ -32,7 +37,7 @@ export default config({
         title: fields.slug({ name: { label: "Title" } }),
         cover: fields.image({ label: "Cover image" }),
         description: fields.text({ label: "Description", validation: {} }),
-        publish: fields.checkbox({label: "Publish", defaultValue: false}),
+        publish: fields.checkbox({ label: "Publish", defaultValue: false }),
         body: fields.content({ label: "Body" }),
       },
     }),

@@ -11,6 +11,8 @@
   "exports": {
     "./ui": "./src/ui.tsx",
     "./api": "./src/api.tsx",
+    "./dry": "./src/dry.ts",
+    "./editor": "./src/editor/index.tsx",
     ".": "./src/index.ts",
     "./package.json": "./package.json",
     "./internal/keystatic-api.js": "./internal/keystatic-api.js",

@@ -7,6 +7,7 @@ import { tableEditing } from 'prosemirror-tables';
 import { tokenSchema } from '@keystar/ui/style';
 
 import { autocompleteDecoration } from './autocomplete/decoration';
+import { blockHandle } from './block-handle';
 import { codeBlockSyntaxHighlighting } from './code-block-highlighting';
 import { keymapForSchema } from './commands/keymap';
 import { dropCursor } from './dropcursor';
@@ -78,6 +79,7 @@ export function createEditorState(
         color: tokenSchema.color.alias.borderSelected,
         width: 2,
       }),
+      blockHandle(),
       inputRules({
         rules: inputRulesForSchema(schema),
         enterRules: enterInputRulesForSchema(schema),

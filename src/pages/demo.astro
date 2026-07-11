@@ -1,0 +1,27 @@
+---
+import { dry } from '@drystack/astro/dry';
+import config from '../../drystack.config';
+
+const d = await dry(config).singleton.home;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Demo — Visual DOM Editing</title>
+  </head>
+  <body>
+    <main>
+      <h1 {...d.item('heading')}>{d.heading}</h1>
+      <p {...d.item('description')}>{d.description}</p>
+
+      <hr />
+      <p>
+        Trang demo cho tính năng chỉnh sửa trực quan (MVP 1). Ở dev, thanh
+        floating luôn hiện — bấm "Sửa trang", click vào tiêu đề/mô tả phía
+        trên để sửa trực tiếp, rồi bấm "Lưu".
+      </p>
+    </main>
+  </body>
+</html>

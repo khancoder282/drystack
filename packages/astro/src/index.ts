@@ -9,7 +9,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
   return {
     name: 'keystatic',
     hooks: {
-      'astro:config:setup': ({ injectRoute, updateConfig, config }) => {
+      'astro:config:setup': ({ injectRoute, injectScript, updateConfig, config }) => {
         updateConfig({
           server: config.server.host ? {} : { host: '127.0.0.1' },
           vite: {
@@ -63,6 +63,38 @@ import "@drystack/core/ui";
           pattern: `/api/${path}/[...params]`,
           prerender: false,
         });
+
+        // MVP 1 visual DOM editor — stage 1: tiny eligibility check present on
+        // every page (dev, or a logged-in-GitHub cookie in prod). Only when
+        // eligible does it dynamically import the real editor (stage 2), so
+        // anonymous visitors never download the editor chunk.
+        injectScript(
+          'page',
+          `const eligible = import.meta.env.DEV || document.cookie.includes('drystack-gh-access-token=');
+if (eligible) {
+  if (import.meta.env.DEV) {
+    // The editor is mounted manually (not as an Astro/React island), so
+    // @vitejs/plugin-react's Fast Refresh preamble — normally injected into
+    // the HTML of pages with a client:* React island — never runs here.
+    // Without it, the .tsx modules below (and drystack.config's own field UI
+    // components, transitively imported when loading the config) throw
+    // "can't detect preamble" as soon as they're evaluated. A static
+    // top-level import would be hoisted and evaluated before we get a
+    // chance to install the preamble, so every import below is dynamic —
+    // dynamic imports run in the exact order awaited, unlike static ones.
+    const refresh = await import('/@react-refresh');
+    refresh.injectIntoGlobalHook(window);
+    window.$RefreshReg$ = () => {};
+    window.$RefreshSig$ = () => (type) => type;
+    window.__vite_plugin_react_preamble_installed__ = true;
+  }
+  const [{ default: cfg }, editor] = await Promise.all([
+    import('virtual:keystatic-config'),
+    import('@drystack/astro/editor'),
+  ]);
+  editor.mount(cfg);
+}`
+        );
       },
     },
   };
