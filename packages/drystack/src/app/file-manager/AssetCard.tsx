@@ -9,10 +9,10 @@ import { trash2Icon } from "@keystar/ui/icon/icons/trash2Icon";
 import { rotateCcwIcon } from "@keystar/ui/icon/icons/rotateCcwIcon";
 import { Flex } from "@keystar/ui/layout";
 import { Text } from "@keystar/ui/typography";
+import { getFileTypeLabel } from "./file-kind";
 import { TooltipTrigger, Tooltip } from "@keystar/ui/tooltip";
 
 import { useMediaLibraryPreviewURL } from "../media-library/useMediaLibraryPreviewURL";
-import { formatBytes } from "./file-kind";
 import { useInView } from "./useInView";
 
 export type AssetCardProps = {
@@ -59,12 +59,8 @@ export function AssetCard(props: AssetCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const infoText =
-    props.kind === "folder"
-      ? `${props.childCount ?? 0} item${props.childCount === 1 ? "" : "s"}`
-      : props.size != null
-        ? formatBytes(props.size)
-        : "—";
-  // truncated filename gets an ellipsis — surface the full name + size as a
+    props.kind === "folder" ? "Folder" : getFileTypeLabel(props.name);
+  // truncated filename gets an ellipsis — surface the full name + type as a
   // native tooltip so it's still discoverable on hover
   const fullLabel = `${props.name} — ${infoText}`;
 

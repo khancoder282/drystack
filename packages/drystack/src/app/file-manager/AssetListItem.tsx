@@ -9,10 +9,10 @@ import { trash2Icon } from "@keystar/ui/icon/icons/trash2Icon";
 import { rotateCcwIcon } from "@keystar/ui/icon/icons/rotateCcwIcon";
 import { Flex } from "@keystar/ui/layout";
 import { Text } from "@keystar/ui/typography";
+import { getFileTypeLabel } from "./file-kind";
 import { TooltipTrigger, Tooltip } from "@keystar/ui/tooltip";
 
 import { useMediaLibraryPreviewURL } from "../media-library/useMediaLibraryPreviewURL";
-import { formatBytes } from "./file-kind";
 import { useInView } from "./useInView";
 
 
@@ -45,15 +45,8 @@ export function AssetListItem(props: AssetListItemProps) {
     true, // list thumbnail — a downscaled preview is plenty
   );
 
-  const infoText =
-    props.kind === "folder"
-      ? `${props.childCount ?? 0} item${props.childCount === 1 ? "" : "s"}`
-      : props.size != null
-        ? formatBytes(props.size)
-        : "—";
-
   const typeText =
-    props.kind === "folder" ? "Folder" : props.isImage ? "Image" : "File";
+    props.kind === "folder" ? "Folder" : getFileTypeLabel(props.name);
 
   return (
     <Flex
@@ -140,11 +133,6 @@ export function AssetListItem(props: AssetListItemProps) {
           }}
         >
           {props.name}
-        </Text>
-        <Text
-          color="neutralSecondary"
-        >
-          {infoText}
         </Text>
       </Flex>
 
