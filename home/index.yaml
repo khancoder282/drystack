@@ -4,3 +4,7 @@ image: /assets/image (1).png
 body:
   wordCount: 4
   charCount: 15
+arrayData:
+  - name: item 1
+  - name: item 2
+  - name: item 3
