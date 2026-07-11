@@ -31,13 +31,21 @@ type FieldChange = Spot & { before: string; after: string };
 const adminBase = `/${String(apiPath).replace(/^\/+|\/+$/g, '')}`;
 
 // Every editable spot rendered on the current page, read from the DOM.
+// Deduped by key — the same field can appear on multiple elements (e.g. a
+// site title in both the header and footer), and consumers below need one
+// entry per key, not one per DOM node, since they re-query all matching
+// elements by key when they need to touch the DOM.
 function readSpots(): Spot[] {
+  const seen = new Set<string>();
   const spots: Spot[] = [];
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
     const key = el.getAttribute('data-dry');
-    if (!key) return;
+    if (!key || seen.has(key)) return;
     const [type, name, field] = key.split('::');
-    if (type === 'singleton' && name && field) spots.push({ key, name, field });
+    if (type === 'singleton' && name && field) {
+      seen.add(key);
+      spots.push({ key, name, field });
+    }
   });
   return spots;
 }
@@ -101,10 +109,11 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   const flashSingleton = (name: string, on: boolean) => {
     const els = spots
       .filter(s => s.name === name)
-      .map(s =>
-        document.querySelector<HTMLElement>(`[data-dry="${CSS.escape(s.key)}"]`)
-      )
-      .filter((el): el is HTMLElement => el != null);
+      .flatMap(s =>
+        Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-dry="${CSS.escape(s.key)}"]`)
+        )
+      );
     els.forEach(el => el.classList.toggle('dry-spot-flash', on));
     if (on && els[0]) {
       els[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -350,11 +359,11 @@ function ReviewDialog({ onChange }: { onChange: () => void }) {
   // back to its original value, and refresh the toolbar's pending count.
   const handleDelete = async (key: string) => {
     await deleteEdit(key);
-    const el = document.querySelector<HTMLElement>(
+    const els = document.querySelectorAll<HTMLElement>(
       `[data-dry="${CSS.escape(key)}"]`
     );
     const original = getOriginalValue(key);
-    if (el && original != null) el.textContent = original;
+    if (original != null) els.forEach(el => { el.textContent = original; });
     setChanges(cs => cs?.filter(c => c.key !== key) ?? null);
     onChange();
   };

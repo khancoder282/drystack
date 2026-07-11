@@ -98,14 +98,17 @@ export async function discardEditsIfBuildIsNewer(
 export async function applyPendingEdits(): Promise<number> {
   const edits = await getAllEdits();
   for (const edit of edits) {
-    const el = document.querySelector<HTMLElement>(
+    // A field can be rendered more than once on a page (e.g. a site title in
+    // both the header and footer) — every element sharing this key must get
+    // the pending edit, not just the first match in document order.
+    const els = document.querySelectorAll<HTMLElement>(
       `[data-dry="${CSS.escape(edit.key)}"]`
     );
-    if (el) {
+    els.forEach(el => {
       // Capture the on-disk value before overwriting it with the pending edit.
       rememberOriginal(edit.key, el.textContent ?? '');
       el.textContent = edit.value;
-    }
+    });
   }
   return edits.length;
 }

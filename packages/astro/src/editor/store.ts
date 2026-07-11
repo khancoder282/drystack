@@ -47,6 +47,18 @@ export async function deleteEdit(key: string): Promise<void> {
   });
 }
 
+export async function deleteEdits(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    for (const key of keys) store.delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function clearEdits(): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
