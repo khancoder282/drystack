@@ -1,10 +1,18 @@
 import { useCallback } from 'react';
 import { base64Encode } from '#base64';
 import { useConfig } from '../shell/context';
-import { useBaseCommit, useRepoInfo, useTree, hydrateTreeCacheWithEntries } from '../shell/data';
+import {
+  useBaseCommit,
+  useRepoInfo,
+  useTree,
+  useCurrentUnscopedTree,
+  useSetTreeSha,
+  hydrateTreeCacheWithEntries,
+} from '../shell/data';
 import { useRouter } from '../router';
 import { fetchBlob } from '../useItemData';
-import { getTreeNodeAtPath, TreeEntry } from '../trees';
+import { getTreeNodeAtPath, updateTreeWithChanges, TreeEntry } from '../trees';
+import { useCommitFileChanges } from '../shell/useCommitFileChanges';
 import { TRASH_DIRECTORY } from './constants';
 
 export function trashedPathFor(path: string) {
@@ -50,20 +58,80 @@ async function postUpdate(
   return hydrateTreeCacheWithEntries(newTree);
 }
 
-// Trash/restore are emulated as a single `/update` call that both writes the
-// bytes at the new location (`additions`) and removes the old path
-// (`deletions`) — there's no dedicated move/rename endpoint on the server.
+// Trash/restore are emulated as a single call that both writes the bytes at
+// the new location (`additions`) and removes the old path (`deletions`) —
+// there's no dedicated move/rename endpoint. Local storage does this via the
+// `/update` REST route; github/cloud storage commits the same change
+// straight to the branch via `useCommitFileChanges`, mirroring how uploads
+// commit (see useFileManagerUpload.ts).
 export function useTrash() {
   const config = useConfig();
   const baseCommit = useBaseCommit();
   const repoInfo = useRepoInfo();
   const { basePath } = useRouter();
   const tree = useTree().current;
+  const unscopedTreeData = useCurrentUnscopedTree();
+  const setTreeSha = useSetTreeSha();
+  const commitFileChanges = useCommitFileChanges();
+  const isGitHub =
+    config.storage.kind === 'github' || config.storage.kind === 'cloud';
+
+  const commitToGitHub = useCallback(
+    async (
+      message: string,
+      additions: { path: string; contents: Uint8Array }[],
+      deletions: readonly string[]
+    ) => {
+      const unscopedTree =
+        unscopedTreeData.kind === 'loaded'
+          ? unscopedTreeData.data.tree
+          : undefined;
+      if (!unscopedTree) throw new Error('Tree not loaded');
+      const updatedTree = await updateTreeWithChanges(unscopedTree, {
+        additions,
+        deletions: [...deletions],
+      });
+      const result = await commitFileChanges({
+        message,
+        additions,
+        deletions: deletions.map(path => ({ path })),
+      });
+      if (result.kind === 'needs-fork') {
+        throw new Error(
+          'This repository requires a fork to make changes — use the entry editor to request one first.'
+        );
+      }
+      if (result.kind === 'error') throw result.error;
+      const hydrated = await hydrateTreeCacheWithEntries(updatedTree.entries);
+      setTreeSha(updatedTree.sha);
+      return hydrated;
+    },
+    [unscopedTreeData, commitFileChanges, setTreeSha]
+  );
+
+  // a directory-shaped path may be selected (e.g. a whole trashed folder) —
+  // github deletions must name individual blobs, so expand any folder entry
+  // to its descendant files first (mirrors FileManagerRoot's expandFolders)
+  const expandToBlobPaths = useCallback(
+    (paths: readonly string[]) => {
+      if (tree.kind !== 'loaded') return paths;
+      return paths.flatMap(path => {
+        const node = getTreeNodeAtPath(tree.data.tree, path);
+        if (node?.entry.type === 'tree') {
+          return descendantBlobPaths(tree.data.entries, path).map(
+            e => e.path
+          );
+        }
+        return [path];
+      });
+    },
+    [tree]
+  );
 
   const movePaths = useCallback(
     async (paths: readonly string[], transform: (path: string) => string) => {
       if (tree.kind !== 'loaded' || paths.length === 0) return undefined;
-      const additions = await Promise.all(
+      const files = await Promise.all(
         paths.map(async path => {
           const sha = getTreeNodeAtPath(tree.data.tree, path)?.entry.sha;
           if (!sha) return null;
@@ -75,16 +143,28 @@ export function useTrash() {
             repoInfo,
             basePath
           );
-          return { path: transform(path), contents: base64Encode(contents) };
+          return { path, newPath: transform(path), contents };
         })
       );
+      const valid = files.filter((x): x is NonNullable<typeof x> => x !== null);
+      if (valid.length === 0) return undefined;
+      if (isGitHub) {
+        return commitToGitHub(
+          'Move files',
+          valid.map(f => ({ path: f.newPath, contents: f.contents })),
+          valid.map(f => f.path)
+        );
+      }
       return postUpdate(
         basePath,
-        additions.filter((x): x is NonNullable<typeof x> => x !== null),
-        paths.map(path => ({ path }))
+        valid.map(f => ({
+          path: f.newPath,
+          contents: base64Encode(f.contents),
+        })),
+        valid.map(f => ({ path: f.path }))
       );
     },
-    [tree, config, baseCommit, repoInfo, basePath]
+    [tree, config, baseCommit, repoInfo, basePath, isGitHub, commitToGitHub]
   );
 
   const trashPaths = useCallback(
@@ -97,16 +177,20 @@ export function useTrash() {
     [movePaths]
   );
 
-  // a directory-shaped path here removes everything under it in one go
-  // (server's fs.rm is called with recursive:true)
   const permanentlyDelete = useCallback(
-    (paths: readonly string[]) =>
-      postUpdate(
+    (paths: readonly string[]) => {
+      if (isGitHub) {
+        return commitToGitHub('Delete files', [], expandToBlobPaths(paths));
+      }
+      // a directory-shaped path here removes everything under it in one go
+      // (server's fs.rm is called with recursive:true)
+      return postUpdate(
         basePath,
         [],
         paths.map(path => ({ path }))
-      ),
-    [basePath]
+      );
+    },
+    [basePath, isGitHub, commitToGitHub, expandToBlobPaths]
   );
 
   return { trashPaths, restorePaths, permanentlyDelete };

@@ -1,3 +1,7 @@
+## Project nature
+
+drystack is a customized fork of Keystatic. Any new feature (file manager, uploads, trash/delete, editing, etc.) **must work correctly in GitHub storage mode** (`storage.kind === 'github'`), not just local mode — check `isLocalConfig`/`isGitHubConfig` (`packages/drystack/src/app/utils.ts`) call sites for the feature and wire up the GitHub code path (typically via `useCommitFileChanges` / GraphQL `createCommitOnBranch`, see `packages/drystack/src/app/shell/useCommitFileChanges.ts`) rather than only the local-only `/update` REST API. If GitHub support can't be done in the same change, gate the feature's UI so it doesn't appear for GitHub mode until it does (see `packages/drystack/src/app/shell/sidebar/index.tsx`'s "File management" nav item for the pattern), and leave a comment explaining what's still local-only.
+
 ## Configuration
 
 The Keystatic-based CMS config file is `drystack.config.ts` at the project root (this fork renames it from upstream's `keystatic.config.ts`). The Astro integration (`packages/astro/src/index.ts`) resolves the `virtual:keystatic-config` module to this filename and lists it in Vite's `optimizeDeps.entries` — if renamed again, update both spots plus any direct imports (e.g. `src/pages/index.astro`).

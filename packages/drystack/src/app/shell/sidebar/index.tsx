@@ -32,7 +32,7 @@ import { usePrevious } from '@keystar/ui/utils';
 import l10nMessages from '../../l10n';
 import { useRouter } from '../../router';
 import { ItemOrGroup, useNavItems } from '../../useNavItems';
-import { isLocalConfig } from '../../utils';
+import { isGitHubConfig, isLocalConfig } from '../../utils';
 import { pluralize } from '../../pluralize';
 
 import { useBrand } from '../common';
@@ -251,10 +251,13 @@ export function SidebarNav() {
           {stringFormatter.format('dashboard')}
         </NavItem>
 
-        {/* the File Manager's own trash/upload actions only work against the
-        local-mode `/update` API, so keep it out of the nav for other storage
-        kinds rather than showing a page that can't do anything */}
-        {isLocalConfig(config) && (
+        {/* upload and trash/restore/permanent-delete all commit straight to
+        the branch for github/cloud storage (see useFileManagerUpload and
+        useTrash), same as the local-only `/update` API does for local
+        storage, so the File Manager works for every storage kind */}
+        {(isLocalConfig(config) ||
+          isGitHubConfig(config) ||
+          config.storage.kind === 'cloud') && (
           <NavItem
             href={`${basePath}/files`}
             aria-current={isCurrent(`${basePath}/files`)}
