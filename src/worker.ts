@@ -69,21 +69,12 @@ export class BuildStatusHub extends DurableObject<Env> {
   }
 }
 
-// Cloudflare's documented payload shape wasn't verifiable against a live
-// event at write time — these are the field paths the docs describe
-// ("trigger metadata: branch, commit, author, commands"). Log and skip
-// rather than throw if a real event doesn't match any of them, and adjust
-// once you've inspected one real message body.
 function commitFromQueueEvent(body: any): string | undefined {
-  return (
-    body?.payload?.trigger?.commit ??
-    body?.payload?.commit ??
-    body?.payload?.commitHash
-  );
+  return body?.payload?.buildTriggerMetadata?.commitHash;
 }
 
 function branchFromQueueEvent(body: any): string | undefined {
-  return body?.payload?.trigger?.branch ?? body?.payload?.branch;
+  return body?.payload?.buildTriggerMetadata?.branch;
 }
 
 function phaseFromEventType(type: string | undefined): BuildPhase | undefined {
