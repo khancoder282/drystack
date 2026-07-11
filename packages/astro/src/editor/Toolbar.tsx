@@ -22,7 +22,7 @@ import { Heading, Text } from '@keystar/ui/typography';
 import { enableEditing, disableEditing, getOriginalValue } from './bind';
 import { getAllEdits, deleteEdit } from './store';
 import { saveEdits } from './save';
-import { watchBuildStatus, type BuildPhase } from './deploy-status';
+import { showDeployProgressToast } from '@drystack/core/deploy-progress-toast';
 import { refreshAfterDeploy } from './dom-refresh';
 
 type Spot = { key: string; name: string; field: string };
@@ -268,64 +268,23 @@ function trackDeploy(
   editedKeys: string[],
   onSettledRefresh: () => void
 ) {
-  const close = toastQueue.neutral(
-    <DeployProgressToastBody
-      commitOid={commitOid}
-      onSettled={async outcome => {
-        close();
-        if (outcome === 'succeeded') {
-          await refreshAfterDeploy(editedKeys);
-          onSettledRefresh();
-          toastQueue.positive('Đã cập nhật trang mới nhất', { timeout: 4000 });
-        } else if (outcome === 'failed' || outcome === 'canceled') {
-          toastQueue.critical(
-            'Build thất bại — các thay đổi vẫn được giữ lại, thử lưu lại sau.',
-            { timeout: 8000 }
-          );
-        } else {
-          toastQueue.info(
-            'Build đang lâu hơn bình thường — tải lại trang để kiểm tra.',
-            { timeout: 8000 }
-          );
-        }
-      }}
-    />
-  );
-}
-
-function DeployProgressToastBody({
-  commitOid,
-  onSettled,
-}: {
-  commitOid: string;
-  onSettled: (outcome: BuildPhase | 'timeout') => void;
-}) {
-  const [label, setLabel] = useState('Đang chờ build…');
-  const settledRef = useRef(false);
-
-  useEffect(() => {
-    settledRef.current = false;
-    return watchBuildStatus(commitOid, update => {
-      if (update.kind === 'label') {
-        setLabel(update.label);
-        return;
-      }
-      if (update.kind === 'phase' && update.phase === 'started') {
-        setLabel('Đang cài đặt dependencies…');
-        return;
-      }
-      if (settledRef.current) return;
-      if (update.kind === 'timeout') {
-        settledRef.current = true;
-        onSettled('timeout');
-      } else if (update.kind === 'phase') {
-        settledRef.current = true;
-        onSettled(update.phase);
-      }
-    });
-  }, [commitOid]);
-
-  return <Text>{label}</Text>;
+  showDeployProgressToast(commitOid, async outcome => {
+    if (outcome === 'succeeded') {
+      await refreshAfterDeploy(editedKeys);
+      onSettledRefresh();
+      toastQueue.positive('Đã cập nhật trang mới nhất', { timeout: 4000 });
+    } else if (outcome === 'failed' || outcome === 'canceled') {
+      toastQueue.critical(
+        'Build thất bại — các thay đổi vẫn được giữ lại, thử lưu lại sau.',
+        { timeout: 8000 }
+      );
+    } else {
+      toastQueue.info(
+        'Build đang lâu hơn bình thường — tải lại trang để kiểm tra.',
+        { timeout: 8000 }
+      );
+    }
+  });
 }
 
 function ReviewDialog({ onChange }: { onChange: () => void }) {

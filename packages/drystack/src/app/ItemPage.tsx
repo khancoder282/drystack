@@ -40,6 +40,7 @@ import {
 import { TextField } from '@keystar/ui/text-field';
 import { Heading, Text } from '@keystar/ui/typography';
 
+import { useDeployProgressToast } from './DeployProgressToast';
 import { Config } from '../config';
 import { ComponentSchema, GenericPreviewProps, ObjectField } from '../form/api';
 import { clientSideValidateProp } from '../form/errors';
@@ -175,6 +176,10 @@ function ItemPageInner(
     );
   };
   const isSavingDisabled = updateResult.kind === 'loading' || !props.hasChanged;
+
+  useDeployProgressToast(
+    updateResult.kind === 'updated' ? updateResult.commitOid : undefined
+  );
 
   const onUpdate = useEventCallback(async () => {
     if (isSavingDisabled) return false;

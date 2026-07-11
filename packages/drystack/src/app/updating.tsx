@@ -119,7 +119,7 @@ export function useUpsertItem(args: {
 }) {
   const [state, setState] = useState<
     | { kind: 'idle' }
-    | { kind: 'updated' }
+    | { kind: 'updated'; commitOid?: string }
     | { kind: 'loading' }
     | { kind: 'needs-fork' }
     | { kind: 'error'; error: Error }
@@ -330,7 +330,7 @@ export function useUpsertItem(args: {
           const target = result.data?.createCommitOnBranch?.ref?.target;
           if (target) {
             uploadSession.clear();
-            setState({ kind: 'updated' });
+            setState({ kind: 'updated', commitOid: target.oid });
             return true;
           }
           throw new Error('Failed to update');

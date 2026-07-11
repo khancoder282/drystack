@@ -16,6 +16,8 @@
     "./renderer": "./src/renderer.tsx",
     "./path-utils": "./src/app/path-utils.ts",
     "./required-files": "./src/app/required-files.ts",
+    "./build-status": "./src/app/build-status.ts",
+    "./deploy-progress-toast": "./src/app/DeployProgressToast.tsx",
     "./yaml": "./src/yaml.ts",
     "./reader": "./src/reader/index.ts",
     "./reader/github": "./src/reader/github.ts",

@@ -69,6 +69,7 @@ import { clipboardPasteIcon } from '@keystar/ui/icon/icons/clipboardPasteIcon';
 import { clipboardCopyIcon } from '@keystar/ui/icon/icons/clipboardCopyIcon';
 import { setValueToPreviewProps } from '../form/get-value';
 import { toastQueue } from '@keystar/ui/toast';
+import { useDeployProgressToast } from './DeployProgressToast';
 
 type SingletonPageProps = {
   singleton: string;
@@ -173,6 +174,12 @@ function SingletonPageInner(
   const formID = 'singleton-form';
 
   const baseCommit = useBaseCommit();
+
+  useDeployProgressToast(
+    props.updateResult.kind === 'updated'
+      ? props.updateResult.commitOid
+      : undefined
+  );
 
   const isCreating = props.initialState === null;
 
