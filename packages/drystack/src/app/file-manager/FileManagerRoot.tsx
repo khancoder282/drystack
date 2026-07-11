@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
-import { ActionButton, Button } from "@keystar/ui/button";
-import { AlertDialog, DialogContainer } from "@keystar/ui/dialog";
+import { ActionButton, Button, ButtonGroup } from "@keystar/ui/button";
+import { Dialog, DialogContainer } from "@keystar/ui/dialog";
+import { Content } from "@keystar/ui/slots";
 import { FileTrigger } from "@keystar/ui/drag-and-drop";
 import { Icon } from "@keystar/ui/icon";
 import { fileUpIcon } from "@keystar/ui/icon/icons/fileUpIcon";
@@ -11,7 +12,7 @@ import { listIcon } from "@keystar/ui/icon/icons/listIcon";
 import { Flex } from "@keystar/ui/layout";
 import { SearchField } from "@keystar/ui/search-field";
 import { Item, TabList, TabPanels, Tabs } from "@keystar/ui/tabs";
-import { Text } from "@keystar/ui/typography";
+import { Heading, Text } from "@keystar/ui/typography";
 
 import { useConfig } from "../shell/context";
 import {
@@ -140,6 +141,7 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     paths: string[];
     label: string;
   } | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
@@ -254,6 +256,28 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
     });
   }
 
+  // Session uploads are keyed by their original path and merged into the grid
+  // as `sessionRows`, so a just-uploaded file that's then trashed/deleted would
+  // otherwise keep showing (with its delete button) until the tree refreshed on
+  // its own. Drop the affected paths (and any descendants, for folders) so the
+  // card disappears immediately.
+  function forgetSessionUploads(paths: string[]) {
+    setSessionUploads((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Map(prev);
+      let changed = false;
+      for (const target of paths) {
+        for (const key of [...next.keys()]) {
+          if (key === target || key.startsWith(`${target}/`)) {
+            next.delete(key);
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }
+
   // mirrors the folder-row `onOpen` navigation below, so landing inside a
   // just-created folder looks the same as opening any other folder
   function navigateIntoSubfolder(name: string) {
@@ -314,21 +338,32 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   }
 
   async function runConfirmedAction() {
-    if (!confirmAction) return;
+    if (!confirmAction || isConfirming) return;
     const { kind, paths } = confirmAction;
-    setConfirmAction(null);
-    if (kind === "permanent") {
-      const result = await permanentlyDelete(paths);
-      await afterMutation(result);
-    } else if (kind === "trash") {
-      const result = await trashPaths(expandFolders(paths));
-      await afterMutation(result);
-      if (previewPath && paths.includes(previewPath)) setPreviewPath(null);
-    } else {
-      const result = await restorePaths(expandFolders(paths));
-      await afterMutation(result);
+    // Keep the dialog open (and its primary button in a pending state) until
+    // the mutation actually finishes — closing early would leave the user
+    // unsure whether the delete/restore succeeded.
+    setIsConfirming(true);
+    try {
+      if (kind === "permanent") {
+        const result = await permanentlyDelete(paths);
+        await afterMutation(result);
+      } else if (kind === "trash") {
+        const result = await trashPaths(expandFolders(paths));
+        await afterMutation(result);
+        if (previewPath && paths.includes(previewPath)) setPreviewPath(null);
+      } else {
+        const result = await restorePaths(expandFolders(paths));
+        await afterMutation(result);
+      }
+      // a just-uploaded file lives in `sessionUploads` under its original path;
+      // drop those entries so trashing/deleting removes the card right away
+      forgetSessionUploads(paths);
+      setSelected(new Set());
+    } finally {
+      setIsConfirming(false);
+      setConfirmAction(null);
     }
-    setSelected(new Set());
   }
 
   function crumbsFor(
@@ -870,32 +905,53 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
         />
       )}
 
-      <DialogContainer onDismiss={() => setConfirmAction(null)}>
+      {/* Custom Dialog rather than AlertDialog: AlertDialog auto-closes the
+          moment its primary button is pressed, but we need it to stay open —
+          with the button in a pending state — until the trash/delete/restore
+          actually completes. */}
+      <DialogContainer
+        onDismiss={() => {
+          if (!isConfirming) setConfirmAction(null);
+        }}
+      >
         {confirmAction && (
-          <AlertDialog
-            title={
-              confirmAction.kind === "restore"
+          <Dialog size="small" role="alertdialog">
+            <Heading>
+              {confirmAction.kind === "restore"
                 ? "Restore files?"
-                : "Delete files?"
-            }
-            tone={confirmAction.kind === "restore" ? "neutral" : "critical"}
-            primaryActionLabel={
-              confirmAction.kind === "restore"
-                ? "Restore"
-                : confirmAction.kind === "permanent"
-                  ? "Delete forever"
-                  : "Move to trash"
-            }
-            cancelLabel="Cancel"
-            onCancel={() => setConfirmAction(null)}
-            onPrimaryAction={runConfirmedAction}
-          >
-            {confirmAction.kind === "restore"
-              ? `Restore ${confirmAction.label}?`
-              : confirmAction.kind === "permanent"
-                ? `Permanently delete ${confirmAction.label}? This can't be undone.`
-                : `Move ${confirmAction.label} to trash? You can restore it later from the Trash tab.`}
-          </AlertDialog>
+                : "Delete files?"}
+            </Heading>
+            <Content>
+              <Text>
+                {confirmAction.kind === "restore"
+                  ? `Restore ${confirmAction.label}?`
+                  : confirmAction.kind === "permanent"
+                    ? `Permanently delete ${confirmAction.label}? This can't be undone.`
+                    : `Move ${confirmAction.label} to trash? You can restore it later from the Trash tab.`}
+              </Text>
+            </Content>
+            <ButtonGroup align="end">
+              <Button
+                onPress={() => setConfirmAction(null)}
+                isDisabled={isConfirming}
+              >
+                Cancel
+              </Button>
+              <Button
+                prominence="high"
+                tone={confirmAction.kind === "restore" ? undefined : "critical"}
+                onPress={runConfirmedAction}
+                isPending={isConfirming}
+                autoFocus
+              >
+                {confirmAction.kind === "restore"
+                  ? "Restore"
+                  : confirmAction.kind === "permanent"
+                    ? "Delete forever"
+                    : "Move to trash"}
+              </Button>
+            </ButtonGroup>
+          </Dialog>
         )}
       </DialogContainer>
     </Flex>
