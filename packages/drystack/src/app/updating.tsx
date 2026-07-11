@@ -17,6 +17,7 @@ import {
 import { fetchBlob, hydrateBlobCache } from './useItemData';
 import { useConfig } from './shell/context';
 import { trashedPathFor } from './file-manager/useTrash';
+import { createCommitMutation } from './shell/useCommitFileChanges';
 import { FormatInfo, getEntryDataFilepath, getPathPrefix } from './path-utils';
 import {
   getTreeNodeAtPath,
@@ -368,26 +369,6 @@ export function useUpsertItem(args: {
     },
   ] as const;
 }
-
-const createCommitMutation = gql`
-  mutation CreateCommit($input: CreateCommitOnBranchInput!) {
-    createCommitOnBranch(input: $input) {
-      ref {
-        id
-        target {
-          id
-          oid
-          ... on Commit {
-            tree {
-              id
-              oid
-            }
-          }
-        }
-      }
-    }
-  }
-` as import('../../__generated__/ts-gql/CreateCommit').type;
 
 export function useDeleteItem(args: {
   basePath: string;

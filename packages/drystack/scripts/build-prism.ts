@@ -80,7 +80,12 @@ if (typeof global !== 'undefined') {
       `var _self = globalThis;`
     );
   await fs.writeFile(
-    `src/form/fields/markdoc/editor/prism.js`,
+    fileURLToPath(
+      new URL(
+        '../src/form/fields/markdoc/editor/prism.js',
+        import.meta.url
+      )
+    ),
     '/* eslint-disable */\nglobalThis.Prism = { manual: true };\n' +
       prism +
       '\n' +

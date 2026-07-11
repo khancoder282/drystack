@@ -10,7 +10,9 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "predev": "bunx tsx packages/drystack/scripts/build-prism.ts",
     "dev": "astro dev",
+    "prebuild": "bunx tsx packages/drystack/scripts/build-prism.ts",
     "build": "astro build",
     "preview": "wrangler dev",
     "astro": "astro"

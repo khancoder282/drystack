@@ -1,7 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { base64Encode } from '#base64';
 import { useRouter } from '../router';
-import { hydrateTreeCacheWithEntries } from '../shell/data';
+import {
+  hydrateTreeCacheWithEntries,
+  useCurrentUnscopedTree,
+  useSetTreeSha,
+} from '../shell/data';
+import { useConfig } from '../shell/context';
+import { useCommitFileChanges } from '../shell/useCommitFileChanges';
+import { updateTreeWithChanges } from '../trees';
 import { trackFreshUpload } from '../media-library/upload-session';
 
 export type ConflictResolution = 'skip' | 'replace' | 'rename';
@@ -37,6 +44,10 @@ function nextConflictIndex(files: PendingUpload[], resolved: Set<File>) {
 // every conflict is resolved does this POST once to `/update`.
 export function useFileManagerUpload() {
   const { basePath } = useRouter();
+  const config = useConfig();
+  const unscopedTreeData = useCurrentUnscopedTree();
+  const setTreeSha = useSetTreeSha();
+  const commitFileChanges = useCommitFileChanges();
   const [pending, setPending] = useState<UploadConflictState | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const resolutionsRef = useRef(new Map<File, ConflictResolution>());
@@ -69,6 +80,36 @@ export function useFileManagerUpload() {
       setIsUploading(true);
       try {
         if (additions.length === 0) return undefined;
+        if (config.storage.kind === 'github' || config.storage.kind === 'cloud') {
+          const unscopedTree =
+            unscopedTreeData.kind === 'loaded'
+              ? unscopedTreeData.data.tree
+              : undefined;
+          if (!unscopedTree) throw new Error('Tree not loaded');
+          const githubAdditions = uploaded.map(u => ({
+            path: u.path,
+            contents: u.content,
+          }));
+          const updatedTree = await updateTreeWithChanges(unscopedTree, {
+            additions: githubAdditions,
+            deletions: [],
+          });
+          const result = await commitFileChanges({
+            message: `Upload files`,
+            additions: githubAdditions,
+            deletions: [],
+          });
+          if (result.kind === 'needs-fork') {
+            throw new Error(
+              'This repository requires a fork to make changes — use the entry editor to request one first.'
+            );
+          }
+          if (result.kind === 'error') throw result.error;
+          const tree = await hydrateTreeCacheWithEntries(updatedTree.entries);
+          setTreeSha(updatedTree.sha);
+          freshPaths.forEach(trackFreshUpload);
+          return { ...tree, uploaded };
+        }
         const res = await fetch(`/api${basePath}/update`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'no-cors': '1' },
@@ -85,7 +126,7 @@ export function useFileManagerUpload() {
         filesRef.current = [];
       }
     },
-    [basePath]
+    [basePath, config, unscopedTreeData, setTreeSha, commitFileChanges]
   );
 
   const startUpload = useCallback(
