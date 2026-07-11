@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { AlertDialog } from '@keystar/ui/dialog';
 import { ProgressCircle } from '@keystar/ui/progress';
 import { Flex } from '@keystar/ui/layout';
@@ -31,14 +32,28 @@ export function QuickEditCheckboxDialog(props: {
 }) {
   const { config, collectionKey, schema, slugField, edit } = props;
   const dirpath = getCollectionItemPath(config, collectionKey, edit.itemSlug);
-  const format = getCollectionFormat(config, collectionKey);
+
+  // `format` and `slug` must keep a stable identity across renders: they feed
+  // useItemData's useCallback deps, and a fresh object each render makes the
+  // memoized loader recompute every render. Once the entry's blobs are cached
+  // (so parseEntry runs synchronously) that loops via useData's
+  // setState-during-render — the "Too many re-renders" crash. Mirror ItemPage,
+  // which memoizes both for exactly this reason.
+  const format = useMemo(
+    () => getCollectionFormat(config, collectionKey),
+    [config, collectionKey]
+  );
+  const slug = useMemo(
+    () => ({ slug: edit.itemSlug, field: slugField }),
+    [edit.itemSlug, slugField]
+  );
 
   const itemData = useItemData({
     config,
     schema,
     dirpath,
     format,
-    slug: { slug: edit.itemSlug, field: slugField },
+    slug,
   });
 
   const loaded =
