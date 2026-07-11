@@ -215,7 +215,13 @@ export function FileManagerRoot(props: { mode: FileManagerMode }) {
   }
 
   async function afterMutation(result: Awaited<ReturnType<typeof trashPaths>>) {
-    if (mode.kind === "page" && result) {
+    // Only local mode has a manual tree-sha setter — `useSetTreeSha` throws in
+    // github/cloud mode (no SetTreeShaContext provider there). In those modes
+    // the tree refreshes on its own from the `createCommitOnBranch` result via
+    // urql's normalized cache, exactly like useUpsertItem's github save path,
+    // so calling setTreeSha here would both be wrong and throw — leaving e.g.
+    // the New Folder dialog open because the throw skips its close call.
+    if (mode.kind === "page" && result && config.storage.kind === "local") {
       setTreeSha(await treeSha(result.tree));
     }
   }

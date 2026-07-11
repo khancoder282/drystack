@@ -4,7 +4,6 @@ import { useRouter } from '../router';
 import {
   hydrateTreeCacheWithEntries,
   useCurrentUnscopedTree,
-  useSetTreeSha,
 } from '../shell/data';
 import { useConfig } from '../shell/context';
 import { useCommitFileChanges } from '../shell/useCommitFileChanges';
@@ -46,7 +45,6 @@ export function useFileManagerUpload() {
   const { basePath } = useRouter();
   const config = useConfig();
   const unscopedTreeData = useCurrentUnscopedTree();
-  const setTreeSha = useSetTreeSha();
   const commitFileChanges = useCommitFileChanges();
   const [pending, setPending] = useState<UploadConflictState | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -106,7 +104,10 @@ export function useFileManagerUpload() {
           }
           if (result.kind === 'error') throw result.error;
           const tree = await hydrateTreeCacheWithEntries(updatedTree.entries);
-          setTreeSha(updatedTree.sha);
+          // No setTreeSha in github/cloud mode: there's no SetTreeShaContext
+          // provider there so it would throw (which previously left the New
+          // Folder dialog stuck open). The tree refreshes from the commit
+          // result via urql's normalized cache, same as useUpsertItem's save.
           freshPaths.forEach(trackFreshUpload);
           return { ...tree, uploaded };
         }
@@ -126,7 +127,7 @@ export function useFileManagerUpload() {
         filesRef.current = [];
       }
     },
-    [basePath, config, unscopedTreeData, setTreeSha, commitFileChanges]
+    [basePath, config, unscopedTreeData, commitFileChanges]
   );
 
   const startUpload = useCallback(

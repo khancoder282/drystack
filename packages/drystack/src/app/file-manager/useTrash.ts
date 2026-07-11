@@ -6,7 +6,6 @@ import {
   useRepoInfo,
   useTree,
   useCurrentUnscopedTree,
-  useSetTreeSha,
   hydrateTreeCacheWithEntries,
 } from '../shell/data';
 import { useRouter } from '../router';
@@ -71,7 +70,6 @@ export function useTrash() {
   const { basePath } = useRouter();
   const tree = useTree().current;
   const unscopedTreeData = useCurrentUnscopedTree();
-  const setTreeSha = useSetTreeSha();
   const commitFileChanges = useCommitFileChanges();
   const isGitHub =
     config.storage.kind === 'github' || config.storage.kind === 'cloud';
@@ -103,10 +101,12 @@ export function useTrash() {
       }
       if (result.kind === 'error') throw result.error;
       const hydrated = await hydrateTreeCacheWithEntries(updatedTree.entries);
-      setTreeSha(updatedTree.sha);
+      // No setTreeSha in github/cloud mode: there's no SetTreeShaContext
+      // provider there so it would throw. The tree refreshes from the commit
+      // result via urql's normalized cache, same as useUpsertItem's save path.
       return hydrated;
     },
-    [unscopedTreeData, commitFileChanges, setTreeSha]
+    [unscopedTreeData, commitFileChanges]
   );
 
   // a directory-shaped path may be selected (e.g. a whole trashed folder) —
