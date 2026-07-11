@@ -12,13 +12,15 @@ import { xIcon } from '@keystar/ui/icon/icons/xIcon';
 import { saveIcon } from '@keystar/ui/icon/icons/saveIcon';
 import { eyeIcon } from '@keystar/ui/icon/icons/eyeIcon';
 import { externalLinkIcon } from '@keystar/ui/icon/icons/externalLinkIcon';
+import { chevronRightIcon } from '@keystar/ui/icon/icons/chevronRightIcon';
+import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { HStack } from '@keystar/ui/layout';
 import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Heading, Text } from '@keystar/ui/typography';
 import { enableEditing, disableEditing, getOriginalValue } from './bind';
-import { getAllEdits } from './store';
+import { getAllEdits, deleteEdit } from './store';
 import { saveEdits } from './save';
 
 type Spot = { key: string; name: string; field: string };
@@ -153,7 +155,7 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
             paddingX="medium"
             paddingY="regular"
             elementType="section"
-            UNSAFE_style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.18)' }}
+            UNSAFE_style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.18)', overflow: 'hidden' }}
           >
             <div
               className="dry-ref"
@@ -233,13 +235,13 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
         )}
 
       <DialogContainer onDismiss={() => setReviewOpen(false)}>
-        {reviewOpen && <ReviewDialog />}
+        {reviewOpen && <ReviewDialog onChange={refreshCount} />}
       </DialogContainer>
     </div>
   );
 }
 
-function ReviewDialog() {
+function ReviewDialog({ onChange }: { onChange: () => void }) {
   const { dismiss } = useDialogContainer();
   const [changes, setChanges] = useState<FieldChange[] | null>(null);
 
@@ -266,6 +268,19 @@ function ReviewDialog() {
     };
   }, []);
 
+  // Discard a single field's edit: drop it from the store, revert the live DOM
+  // back to its original value, and refresh the toolbar's pending count.
+  const handleDelete = async (key: string) => {
+    await deleteEdit(key);
+    const el = document.querySelector<HTMLElement>(
+      `[data-dry="${CSS.escape(key)}"]`
+    );
+    const original = getOriginalValue(key);
+    if (el && original != null) el.textContent = original;
+    setChanges(cs => cs?.filter(c => c.key !== key) ?? null);
+    onChange();
+  };
+
   return (
     <Dialog size="large" aria-label="Review changes">
       <Heading>Review changes</Heading>
@@ -275,7 +290,12 @@ function ReviewDialog() {
         {changes && changes.length > 0 && (
           <div>
             {changes.map((c, i) => (
-              <FieldDiffView key={c.key} change={c} defaultOpen={i === 0} />
+              <FieldDiffView
+                key={c.key}
+                change={c}
+                defaultOpen={i === 0}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -287,24 +307,55 @@ function ReviewDialog() {
   );
 }
 
-function FieldDiffView({ change, defaultOpen }: { change: FieldChange; defaultOpen?: boolean }) {
+function FieldDiffView({
+  change,
+  defaultOpen,
+  onDelete,
+}: {
+  change: FieldChange;
+  defaultOpen?: boolean;
+  onDelete: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
   const lines = diffLines(change.before, change.after);
   return (
-    <details className="dry-acc" open={defaultOpen}>
-      <summary>
-        <span>{change.field}</span>
-        <span className="dry-acc-name">· {change.name}</span>
-      </summary>
-      <div
-        className="dry-diff"
-        style={{
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          fontSize: 12,
-          lineHeight: 1.5,
-          borderTop: '1px solid rgba(128,128,128,0.3)',
-          overflowX: 'auto',
-        }}
-      >
+    <div className="dry-acc">
+      <div className="dry-acc-head">
+        <button
+          type="button"
+          className="dry-acc-summary"
+          aria-expanded={open}
+          onClick={() => setOpen(o => !o)}
+        >
+          <span className={`dry-acc-chevron${open ? ' is-open' : ''}`}>
+            <Icon src={chevronRightIcon} />
+          </span>
+          <Text weight="semibold">{change.field}</Text>
+          <Text color="neutralSecondary">· {change.name}</Text>
+        </button>
+        <TooltipTrigger>
+          <ActionButton
+            prominence="low"
+            aria-label="Discard this change"
+            onPress={() => onDelete(change.key)}
+          >
+            <Icon src={trash2Icon} />
+          </ActionButton>
+          <Tooltip>Discard this change</Tooltip>
+        </TooltipTrigger>
+      </div>
+      <div className={`dry-acc-body${open ? ' is-open' : ''}`}>
+        <div className="dry-acc-body-inner">
+          <div
+            className="dry-diff"
+            style={{
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontSize: 12,
+              lineHeight: 1.5,
+              borderTop: '1px solid rgba(128,128,128,0.3)',
+              overflowX: 'auto',
+            }}
+          >
         {lines.map((line, i) => (
           <div
             key={i}
@@ -339,8 +390,10 @@ function FieldDiffView({ change, defaultOpen }: { change: FieldChange; defaultOp
             <span style={{ flex: 1 }}>{line.text || ' '}</span>
           </div>
         ))}
+          </div>
+        </div>
       </div>
-    </details>
+    </div>
   );
 }
 

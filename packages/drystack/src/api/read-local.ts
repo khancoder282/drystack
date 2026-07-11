@@ -1,5 +1,4 @@
-import fs from 'fs/promises';
-import path from 'path';
+import { realFsPromises as fs, realPath as path } from './real-node';
 import {
   getCollectionPath,
   getSingletonFormat,

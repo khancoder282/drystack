@@ -92,8 +92,15 @@ body.editing [data-dry]:hover {
   pointer-events: auto;
 }
 .dry-menu-inner {
-  overflow: hidden;
   min-width: 0;
+  /* Clip during the width collapse. Once open, flip to visible so the pill's
+     drop shadow isn't cut off — delayed past the animation via a 0s/delay
+     transition on this discrete property (closing reverts instantly). */
+  overflow: hidden;
+}
+.dry-menu.is-open .dry-menu-inner {
+  overflow: visible;
+  transition: overflow 0s 0.3s;
 }
 
 /* Floating count badge, pinned to the top-right of the Review button. */
@@ -152,38 +159,55 @@ body.editing [data-dry]:hover {
    markup, so it doesn't inherit a Keystar text colour). */
 .dry-diff { color: #1f2937; }
 
-/* Review changes = one accordion item per edited key (native <details>). */
+/* Review changes = one accordion item per edited key. Built to match Keystar
+   (its Text/Icon in the header) with a smooth height collapse via animatable
+   grid rows. */
 .dry-acc {
   border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 8px;
   overflow: hidden;
 }
 .dry-acc + .dry-acc { margin-top: 8px; }
-.dry-acc > summary {
+.dry-acc-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+}
+.dry-acc-summary {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  font-weight: 600;
-  list-style: none;
-  user-select: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
-.dry-acc > summary::-webkit-details-marker { display: none; }
-.dry-acc > summary::before {
-  content: '';
-  width: 6px;
-  height: 6px;
+.dry-acc-summary:hover { background: rgba(128, 128, 128, 0.08); }
+.dry-acc-chevron {
+  display: flex;
   flex: none;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(-45deg);
+  opacity: 0.6;
   transition: transform 0.2s ease;
-  opacity: 0.5;
 }
-.dry-acc[open] > summary::before { transform: rotate(45deg); }
-.dry-acc > summary:hover { background: rgba(128, 128, 128, 0.1); }
-.dry-acc .dry-acc-name { font-weight: 400; font-size: 12px; opacity: 0.55; }
+.dry-acc-chevron.is-open { transform: rotate(90deg); }
+
+/* Collapse animation — grid-template-rows 0fr <-> 1fr animates the height. */
+.dry-acc-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.dry-acc-body.is-open { grid-template-rows: 1fr; }
+.dry-acc-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
 
 @media (prefers-color-scheme: dark) {
   .dry-ref-menu {

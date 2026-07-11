@@ -1,6 +1,9 @@
-import path from 'node:path';
 import * as s from 'superstruct';
-import fs from 'node:fs/promises';
+import {
+  realFsPromises as fs,
+  realPath as path,
+  realCrypto,
+} from './real-node';
 import { Config } from '../config';
 import {
   KeystaticRequest,
@@ -9,8 +12,9 @@ import {
 } from './internal-utils';
 import { readToDirEntries, getAllowedDirectories } from './read-local';
 import { blobSha } from '../app/trees';
-import { randomBytes } from 'node:crypto';
 import { base64UrlDecode } from '#base64';
+
+const { randomBytes } = realCrypto;
 
 // this should be trivially dead code eliminated
 // it's just to ensure the types are exactly the same between this and local-noop.ts
