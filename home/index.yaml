@@ -2,8 +2,8 @@ heading: Hello from Drystack Đã đổi
 description: Edit this content in the Keystatic admin UI at /drystack.
 image: /assets/image (1).png
 body:
-  wordCount: 4
-  charCount: 15
+  wordCount: 10
+  charCount: 44
 arrayData:
   - name: item 1
   - name: item 2
