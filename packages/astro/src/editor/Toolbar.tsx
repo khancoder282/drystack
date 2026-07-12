@@ -133,7 +133,7 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   };
 
   const onReset = async () => {
-    await resetPendingEdits(config);
+    await resetPendingEdits();
     await refreshCount();
   };
 

@@ -102,18 +102,16 @@ export async function discardEditsIfBuildIsNewer(
 }
 
 // Re-reads every on-page singleton straight from its real source (local API,
-// or the GitHub Contents API at the default branch) and repaints fields from
-// it — called when entering edit mode so a visitor starts from what's
-// actually on disk/GitHub, not from HTML that may be stale (a github-mode
-// page can be served from a Cloudflare CDN edge that hasn't caught up with
-// the latest deploy yet). By default fields with a pending edit are left
-// alone (unsaved typed content wins over a fresh fetch); pass
-// `overwritePending: true` to repaint those too — used by resetPendingEdits,
-// where discarding *is* the point. Best-effort — a fetch failure (e.g. no
-// GitHub auth cookie) just leaves the current text in place.
+// or the GitHub Contents API at the default branch) and repaints any field
+// that has no pending edit — called when entering edit mode so a visitor
+// starts from what's actually on disk/GitHub, not from HTML that may be
+// stale (a github-mode page can be served from a Cloudflare CDN edge that
+// hasn't caught up with the latest deploy yet). Fields with a pending edit
+// are left alone: unsaved typed content always wins over a fresh fetch.
+// Best-effort — a fetch failure (e.g. no GitHub auth cookie) just leaves the
+// server-rendered text in place rather than blocking edit mode.
 export async function refreshFromLatestSource(
-  config: Config<any, any>,
-  options?: { overwritePending?: boolean }
+  config: Config<any, any>
 ): Promise<void> {
   const singletonNames = new Set<string>();
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
@@ -121,9 +119,7 @@ export async function refreshFromLatestSource(
     if (type === 'singleton' && name) singletonNames.add(name);
   });
 
-  const pendingKeys = options?.overwritePending
-    ? new Set<string>()
-    : new Set((await getAllEdits()).map(edit => edit.key));
+  const pendingKeys = new Set((await getAllEdits()).map(edit => edit.key));
 
   await Promise.all(
     Array.from(singletonNames, async name => {
@@ -151,20 +147,14 @@ export async function refreshFromLatestSource(
 }
 
 // Discards every pending edit: restores each on-page field to its captured
-// baseline first (instant, always available — the floor if the fetch below
-// fails), then best-effort re-fetches from the true source and overwrites
-// with that instead — the captured baseline can itself be stale if someone
-// else committed to GitHub after this page entered edit mode, and discarding
-// should land on what's actually live now, not on a stale snapshot.
-export async function resetPendingEdits(
-  config: Config<any, any>
-): Promise<void> {
+// baseline (kept accurate by refreshFromLatestSource/applyPendingEdits) and
+// clears the IndexedDB edit log — no network fetch needed.
+export async function resetPendingEdits(): Promise<void> {
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
     const key = el.getAttribute('data-dry');
     const original = key ? getOriginalValue(key) : undefined;
     if (original !== undefined) el.textContent = original;
   });
-  await refreshFromLatestSource(config, { overwritePending: true });
   await publishClear();
 }
 
