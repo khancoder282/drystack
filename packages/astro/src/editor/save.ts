@@ -196,6 +196,41 @@ export async function getCurrentBranchName(
   return branch.branchName;
 }
 
+// The singleton's current on-disk field values, read straight from the
+// source (local API, or GitHub Contents API at the default branch) rather
+// than trusting whatever HTML the page happened to render with — that HTML
+// can be stale in github mode if this visitor's Cloudflare CDN edge hasn't
+// caught up with the latest deploy yet. Only string-valued (fields.text)
+// entries are returned, matching MVP 1's scope (see dry.ts).
+export async function getLatestFieldValues(
+  config: Config<any, any>,
+  singletonName: string
+): Promise<Record<string, string>> {
+  let branch: string | undefined;
+  if (config.storage.kind === 'github') {
+    const token = getGithubToken();
+    if (!token) throw new Error('Not signed in to GitHub');
+    const { owner, name } = parseRepo((config.storage as any).repo);
+    branch = (await getDefaultBranch(token, owner, name)).branchName;
+  }
+  const format = getSingletonFormat(config, singletonName);
+  const filepath = getEntryDataFilepath(
+    getSingletonPath(config, singletonName),
+    format
+  );
+  const raw = await readCurrentFile(config, filepath, branch);
+  if (!raw) return {};
+  const data = (loadDataFile(raw, format).loaded ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const result: Record<string, string> = {};
+  for (const [field, value] of Object.entries(data)) {
+    if (typeof value === 'string') result[field] = value;
+  }
+  return result;
+}
+
 // Before/after text for every file the pending edits would change — resolves
 // the GitHub default branch first when needed, mirroring the save path.
 export async function getPendingDiffs(

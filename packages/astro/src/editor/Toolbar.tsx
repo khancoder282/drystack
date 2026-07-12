@@ -19,7 +19,7 @@ import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Heading, Text } from '@keystar/ui/typography';
-import { enableEditing, disableEditing, getOriginalValue } from './bind';
+import { enableEditing, disableEditing, getOriginalValue, refreshFromLatestSource } from './bind';
 import { getAllEdits, deleteEdit } from './store';
 import { saveEdits, getCurrentBranchName } from './save';
 import { showDeployProgressToast } from '@drystack/core/deploy-progress-toast';
@@ -78,6 +78,10 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
     } else {
       enableEditing(refreshCount);
       setSpots(readSpots());
+      // Don't block entering edit mode on the network — repaint with the
+      // real current source once it resolves, fields with a pending edit
+      // stay untouched.
+      refreshFromLatestSource(config).then(refreshCount);
     }
     setEditing(!editing);
   };

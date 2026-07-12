@@ -1,5 +1,6 @@
 import type { Config } from '@drystack/core';
 import { getAllEdits, setEdit, clearEdits, getMeta, setMeta } from './store';
+import { getLatestFieldValues } from './save';
 
 const BUILD_VERSION_KEY = 'buildVersion';
 
@@ -90,6 +91,51 @@ export async function discardEditsIfBuildIsNewer(
     await clearEdits();
     await setMeta(BUILD_VERSION_KEY, buildVersion);
   }
+}
+
+// Re-reads every on-page singleton straight from its real source (local API,
+// or the GitHub Contents API at the default branch) and repaints any field
+// that has no pending edit — called when entering edit mode so a visitor
+// starts from what's actually on disk/GitHub, not from HTML that may be
+// stale (a github-mode page can be served from a Cloudflare CDN edge that
+// hasn't caught up with the latest deploy yet). Fields with a pending edit
+// are left alone: unsaved typed content always wins over a fresh fetch.
+// Best-effort — a fetch failure (e.g. no GitHub auth cookie) just leaves the
+// server-rendered text in place rather than blocking edit mode.
+export async function refreshFromLatestSource(
+  config: Config<any, any>
+): Promise<void> {
+  const singletonNames = new Set<string>();
+  document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
+    const [type, name] = el.getAttribute('data-dry')?.split('::') ?? [];
+    if (type === 'singleton' && name) singletonNames.add(name);
+  });
+
+  const pendingKeys = new Set((await getAllEdits()).map(edit => edit.key));
+
+  await Promise.all(
+    Array.from(singletonNames, async name => {
+      let latest: Record<string, string>;
+      try {
+        latest = await getLatestFieldValues(config, name);
+      } catch {
+        return;
+      }
+      document
+        .querySelectorAll<HTMLElement>(
+          `[data-dry^="singleton::${CSS.escape(name)}::"]`
+        )
+        .forEach(el => {
+          const key = el.getAttribute('data-dry')!;
+          if (pendingKeys.has(key)) return;
+          const field = key.split('::')[2];
+          const value = latest[field];
+          if (value === undefined) return;
+          resetOriginalValue(key, value);
+          el.textContent = value;
+        });
+    })
+  );
 }
 
 // Applies edits saved in IndexedDB on top of the server-rendered DOM — runs
