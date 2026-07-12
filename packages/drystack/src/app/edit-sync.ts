@@ -12,16 +12,18 @@ import type { ComponentSchema } from '..';
 const DB_NAME = 'drystack-edits';
 const STORE_NAME = 'edits';
 const META_STORE_NAME = 'meta';
+const SOURCE_STORE_NAME = 'source';
 
 export type PendingEdit = { key: string; value: string; updatedAt: number };
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
       if (!db.objectStoreNames.contains(META_STORE_NAME)) db.createObjectStore(META_STORE_NAME);
+      if (!db.objectStoreNames.contains(SOURCE_STORE_NAME)) db.createObjectStore(SOURCE_STORE_NAME);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -95,6 +97,54 @@ export async function setMeta(key: string, value: unknown): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(META_STORE_NAME, 'readwrite');
     tx.objectStore(META_STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// --- Source cache --------------------------------------------------------
+//
+// Last-known field values fetched straight from the real source (local API,
+// or the GitHub Contents API) for a singleton, persisted across reloads.
+// Exists to bridge the gap between a github-mode save succeeding (the commit
+// is live) and the next static build/deploy actually shipping it — without
+// this, reloading the page during that window shows the stale pre-deploy
+// HTML with nothing to paint over it, since a save clears the per-field
+// pending-edit entries as soon as it succeeds. Populated wherever
+// getLatestFieldValues is already being fetched (entering edit mode, right
+// after save) — no extra network calls. Cleared once a newer buildVersion
+// confirms the static build has actually caught up (discardEditsIfBuildIsNewer),
+// so a stale cache entry can never paint over fresher static HTML.
+export async function getSourceCache(
+  singletonName: string
+): Promise<Record<string, string> | undefined> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SOURCE_STORE_NAME, 'readonly');
+    const req = tx.objectStore(SOURCE_STORE_NAME).get(singletonName);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function setSourceCache(
+  singletonName: string,
+  values: Record<string, string>
+): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SOURCE_STORE_NAME, 'readwrite');
+    tx.objectStore(SOURCE_STORE_NAME).put(values, singletonName);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function clearSourceCache(): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SOURCE_STORE_NAME, 'readwrite');
+    tx.objectStore(SOURCE_STORE_NAME).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

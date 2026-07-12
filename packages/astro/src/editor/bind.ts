@@ -6,6 +6,9 @@ import {
   getMeta,
   setMeta,
   subscribeEdits,
+  getSourceCache,
+  setSourceCache,
+  clearSourceCache,
   type EditBusMessage,
 } from './store';
 import { getLatestFieldValues } from './save';
@@ -97,6 +100,11 @@ export async function discardEditsIfBuildIsNewer(
   }
   if (buildVersion > lastSeen) {
     await publishClear();
+    // The static build just caught up, so its HTML is now at least as fresh
+    // as anything cached below — keeping a stale entry around would risk it
+    // later painting over even-fresher static HTML from a *subsequent*
+    // deploy this tab never re-fetched for.
+    await clearSourceCache();
     await setMeta(BUILD_VERSION_KEY, buildVersion);
   }
 }
@@ -129,6 +137,11 @@ export async function refreshFromLatestSource(
       } catch {
         return;
       }
+      // Persist what we just fetched so a reload during the window between
+      // "commit landed on GitHub" and "the next static build/deploy actually
+      // ships it" still shows this instead of stale pre-deploy HTML — see
+      // applyCachedSource below.
+      await setSourceCache(name, latest);
       document
         .querySelectorAll<HTMLElement>(
           `[data-dry^="singleton::${CSS.escape(name)}::"]`
@@ -175,11 +188,49 @@ function applyEdit(key: string, value: string): void {
   });
 }
 
+// Paints the last known fetched-from-source value (see refreshFromLatestSource)
+// for singleton fields that don't have a pending edit — bridges a github-mode
+// save's commit-to-deploy gap without a network fetch: a reload right after
+// saving would otherwise show the stale pre-deploy static HTML with nothing
+// to paint over it, since a successful save clears the pending-edit entry.
+async function applyCachedSource(pendingKeys: Set<string>): Promise<void> {
+  const singletonNames = new Set<string>();
+  document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
+    const [type, name] = el.getAttribute('data-dry')?.split('::') ?? [];
+    if (type === 'singleton' && name) singletonNames.add(name);
+  });
+
+  await Promise.all(
+    Array.from(singletonNames, async name => {
+      const cached = await getSourceCache(name);
+      if (!cached) return;
+      document
+        .querySelectorAll<HTMLElement>(
+          `[data-dry^="singleton::${CSS.escape(name)}::"]`
+        )
+        .forEach(el => {
+          const key = el.getAttribute('data-dry')!;
+          if (pendingKeys.has(key)) return;
+          const field = key.split('::')[2];
+          const value = cached[field];
+          if (value === undefined) return;
+          resetOriginalValue(key, value);
+          el.textContent = value;
+        });
+    })
+  );
+}
+
 // Applies edits saved in IndexedDB on top of the server-rendered DOM — runs
 // on every page load (even before Edit mode is turned on) so an unsaved edit
 // survives a reload, per plan.md's "chưa lưu thì reload phải lấy IndexDB".
 export async function applyPendingEdits(): Promise<number> {
   const edits = await getAllEdits();
+  const pendingKeys = new Set(edits.map(edit => edit.key));
+  // Cached source first (sets the baseline for fields with no pending edit),
+  // then pending edits on top — applyEdit's rememberOriginal only captures a
+  // baseline if one isn't already set, so ordering here matters.
+  await applyCachedSource(pendingKeys);
   for (const edit of edits) applyEdit(edit.key, edit.value);
   return edits.length;
 }
