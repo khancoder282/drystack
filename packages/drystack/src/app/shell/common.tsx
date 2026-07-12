@@ -10,7 +10,6 @@ export function useBrand() {
   let prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
 
   let brandMark = <DrystackLogo />;
-  let brandName = "Drystack";
 
   if (config.ui?.brand?.mark) {
     let BrandMark = config.ui.brand.mark;
@@ -20,20 +19,12 @@ export function useBrand() {
     brandMark = <BrandMark colorScheme={resolvedColorScheme} />;
   }
 
-  if ("repo" in config.storage) {
-    brandName = serializeRepoConfig(config.storage.repo);
-  }
-  if (config.ui?.brand?.name) {
-    brandName = config.ui.brand.name;
-  }
-
-  return { brandMark, brandName };
+  return { brandMark };
 }
 
 function DrystackLogo() {
-  let size = 32;
-  let accent = tokenSchema.color.foreground.accent;
-  let colorText = tokenSchema.color.foreground.neutral;
+  const size = 32;
+  const {accent, neutral} = tokenSchema.color.foreground;
   return (
     <svg
       width={size * 5}
@@ -79,8 +70,8 @@ function DrystackLogo() {
         letter-spacing="-0.5"
       >
         <tspan fill={accent}>Dry</tspan>
-        <tspan fill={colorText}>Stack</tspan>
-        <tspan fill={colorText} fill-opacity="0.45">
+        <tspan fill={neutral}>Stack</tspan>
+        <tspan fill={neutral} fill-opacity="0.45">
           .dev
         </tspan>
       </text>
