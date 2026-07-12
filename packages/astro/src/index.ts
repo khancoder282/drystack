@@ -2,9 +2,30 @@ import type { AstroIntegration } from 'astro';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RunnableDevEnvironment, ViteDevServer } from 'vite';
 import { createRunnableDevEnvironment } from 'vite';
-import { mkdirSync, writeFileSync, readdirSync, cpSync } from 'node:fs';
+import {
+  mkdirSync,
+  writeFileSync,
+  readdirSync,
+  readFileSync,
+  existsSync,
+  appendFileSync,
+  cpSync,
+} from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
+import { load } from 'js-yaml';
+import {
+  parseRedirectEntries,
+  serializeRedirectsFile,
+  REDIRECTS_FILE_PATH,
+} from '@drystack/core/redirects';
+
+// Cloudflare's `_redirects` file caps out at 2,000 static rules (see
+// https://developers.cloudflare.com/workers/static-assets/redirects/) — the
+// redirect table is expected to stay tiny (it only grows across renames, and
+// appendRedirect keeps it flat rather than accumulating chains), so this is a
+// loud safety net, not a limit we expect to hit.
+const CLOUDFLARE_REDIRECTS_LIMIT = 2000;
 
 // A dedicated Node-runnable Vite environment for the local-storage API. The
 // Cloudflare adapter turns the default `ssr` environment into a non-runnable
@@ -143,6 +164,32 @@ function copyDrystackAssets(root: string, clientDir: string) {
   }
 }
 
+// Turns the `redirects` singleton (redirects/index.yaml — written by
+// drystack's rename/delete flow, see packages/drystack/src/app/updating.tsx)
+// into a Cloudflare Workers `_redirects` file so renamed/deleted entries get a
+// real edge-served 301 instead of a 404. Astro's static build already copied
+// `public/_redirects` (if any) into `clientDir` by the time `astro:build:done`
+// fires, so this appends rather than overwrites — a hand-authored file's
+// rules stay first and win ties (Cloudflare uses the top-most matching rule).
+function writeCmsRedirectsFile(root: string, clientDir: string) {
+  const sourcePath = join(root, REDIRECTS_FILE_PATH);
+  if (!existsSync(sourcePath)) return;
+  const parsed = load(readFileSync(sourcePath, 'utf8'));
+  const entries = parseRedirectEntries(parsed);
+  if (!entries.length) return;
+  if (entries.length > CLOUDFLARE_REDIRECTS_LIMIT) {
+    console.warn(
+      `drystack: ${entries.length} redirects exceeds Cloudflare's ${CLOUDFLARE_REDIRECTS_LIMIT}-rule limit for _redirects — only the first ${CLOUDFLARE_REDIRECTS_LIMIT} will be written. Consider pruning old entries in the "Chuyển hướng 301" singleton.`
+    );
+  }
+  const body = serializeRedirectsFile(entries.slice(0, CLOUDFLARE_REDIRECTS_LIMIT));
+  if (!body) return;
+  const destPath = join(clientDir, '_redirects');
+  const separator = existsSync(destPath) ? '\n' : '';
+  mkdirSync(clientDir, { recursive: true });
+  appendFileSync(destPath, separator + body + '\n');
+}
+
 export default function drystack(options?: { path?: string }): AstroIntegration {
   const path = (options?.path ?? 'drystack').replace(/^\/+|\/+$/g, '');
   // Captured once per build/dev-server start. Cloudflare Pages runs a fresh
@@ -164,6 +211,7 @@ export default function drystack(options?: { path?: string }): AstroIntegration 
       'astro:build:done': () => {
         if (projectRoot && clientOutDir) {
           copyDrystackAssets(projectRoot, clientOutDir);
+          writeCmsRedirectsFile(projectRoot, clientOutDir);
         }
       },
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, config }) => {

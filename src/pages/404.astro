@@ -1,0 +1,59 @@
+---
+import Main from "../layout/main.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Icon from "../components/Icon.astro";
+
+// A real 404, not a redirect to the homepage: Google explicitly flags
+// blanket 404→homepage redirects as "soft 404s" that waste crawl budget and
+// pass no link equity (see plan/redirects — the standing rule for this
+// feature). Only URLs recorded in the `redirects` singleton get a 301
+// (generated at build time into dist/_redirects); everything else lands
+// here with a real path back into the site.
+---
+
+<Main
+  title="Không tìm thấy trang | 404"
+  description="Trang bạn tìm không tồn tại hoặc đã được di chuyển."
+>
+  <Header />
+
+  <section class="not-found section--dark">
+    <div class="container">
+      <p class="eyebrow">404</p>
+      <h1 class="section-title">Không tìm thấy trang</h1>
+      <p class="section-lede">
+        Đường dẫn này không tồn tại hoặc đã được di chuyển sang chỗ khác.
+      </p>
+      <div class="not-found__links">
+        <a href="/" class="btn btn-primary">
+          Về trang chủ <Icon name="arrow-right" size={16} />
+        </a>
+        <a href="/blog" class="btn btn-ghost">Bài viết</a>
+        <a href="/blog-kien-thuc" class="btn btn-ghost">Kiến thức SEO</a>
+        <a href="/dich-vu" class="btn btn-ghost">Dịch vụ</a>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Main>
+
+<style>
+  .not-found {
+    padding-block: 9rem 7rem;
+    text-align: center;
+  }
+
+  .not-found .container {
+    max-width: 640px;
+  }
+
+  .not-found__links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+</style>

@@ -19,11 +19,12 @@ const socialPlatformOptions = [
 const headingFieldDescription =
   "Đặt phần cần nhấn mạnh trong dấu ngoặc vuông, VD: Nguyễn Phương Quang - [chuyên gia SEO]";
 
-function postCollection(label: string) {
+function postCollection(label: string, previewUrl: string) {
   return collection({
     label,
     slugField: "title",
     entryLayout: "content",
+    previewUrl,
     schema: {
       title: fields.slug({ name: { label: "Tiêu đề" } }),
       excerpt: fields.text({
@@ -59,25 +60,13 @@ export default config({
         kind: "github",
         repo: "khancoder282/drystack",
       },
-  ui: {
-    brand: { name: "QuangSEO CMS" },
-    navigation: {
-      "Nội dung": ["blog", "seoKnowledge", "services"],
-      "Trang & thông tin chung": [
-        "homepage",
-        "gioiThieu",
-        "dichVu",
-        "blogListing",
-        "seoKnowledgeListing",
-      ],
-    },
-  },
   collections: {
-    blog: postCollection("Bài viết"),
-    seoKnowledge: postCollection("Kiến thức SEO"),
+    blog: postCollection("Bài viết", "/blog/{slug}"),
+    seoKnowledge: postCollection("Kiến thức SEO", "/blog-kien-thuc/{slug}"),
     services: collection({
       label: "Dịch vụ",
       slugField: "title",
+      previewUrl: "/dich-vu/{slug}",
       schema: {
         title: fields.slug({ name: { label: "Tên dịch vụ" } }),
         metaTitle: fields.text({
@@ -454,6 +443,30 @@ export default config({
           description: headingFieldDescription,
         }),
         lede: fields.text({ label: "Mô tả", multiline: true }),
+      },
+    }),
+    // Bảng chuyển hướng 301. Drystack tự ghi vào đây khi bạn đổi slug hoặc
+    // xoá một bài đã publish (xem packages/drystack/src/app/redirects.ts).
+    // Lúc build, packages/astro sinh ra dist/_redirects từ file này để
+    // Cloudflare trả 301 thật ở edge. Bạn cũng có thể sửa/xoá thủ công ở đây.
+    redirects: singleton({
+      label: "Chuyển hướng 301",
+      schema: {
+        entries: fields.array(
+          fields.object({
+            from: fields.text({ label: "URL cũ" }),
+            to: fields.text({ label: "URL mới" }),
+            createdAt: fields.text({ label: "Ngày tạo" }),
+            note: fields.text({ label: "Ghi chú" }),
+          }),
+          {
+            label: "Danh sách chuyển hướng",
+            itemLabel: (props) =>
+              `${props.fields.from.value || "?"} → ${
+                props.fields.to.value || "?"
+              }`,
+          },
+        ),
       },
     }),
   },

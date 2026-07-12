@@ -1,6 +1,7 @@
 import { useLocalizedStringFormatter } from '@react-aria/i18n';
 import { isHotkey } from 'is-hotkey';
 import {
+  CSSProperties,
   FormEvent,
   Key,
   ReactElement,
@@ -17,6 +18,7 @@ import * as s from 'superstruct';
 import { ActionGroup, Item } from '@keystar/ui/action-group';
 import { Badge } from '@keystar/ui/badge';
 import { Button, ButtonGroup } from '@keystar/ui/button';
+import { Combobox } from '@keystar/ui/combobox';
 import { AlertDialog, Dialog, DialogContainer } from '@keystar/ui/dialog';
 import { Icon } from '@keystar/ui/icon';
 import { copyPlusIcon } from '@keystar/ui/icon/icons/copyPlusIcon';
@@ -29,6 +31,7 @@ import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { Box, Flex } from '@keystar/ui/layout';
 import { Notice } from '@keystar/ui/notice';
 import { ProgressCircle } from '@keystar/ui/progress';
+import { Radio, RadioGroup } from '@keystar/ui/radio';
 import { Content } from '@keystar/ui/slots';
 import {
   breakpointQueries,
@@ -63,6 +66,7 @@ import { useConfig } from './shell/context';
 import { useBaseCommit, useCurrentBranch, useRepoInfo } from './shell/data';
 import { PageBody, PageHeader, PageRoot } from './shell/page';
 import { useSlugFieldInfo } from './slugs';
+import { useSlugsInCollection } from './useSlugsInCollection';
 import { delDraft, getDraft, setDraft } from './persistence';
 import {
   serializeEntryToFiles,
@@ -98,6 +102,22 @@ type ItemPageProps = {
   basePath: string;
 };
 
+// Renders inline paths/URLs in dialog copy with the admin's code font token
+// instead of the browser's default monospace stack (raw `<code>` tags don't
+// pick up @keystar/ui's typography system).
+const codeText = css({
+  fontFamily: tokenSchema.typography.fontFamily.code,
+});
+
+// AlertDialog hardcodes `size="small"` with no way to opt into a larger
+// size — override the width it reads via CSS custom property directly
+// (see @keystar/ui's Dialog.tsx: `width: 'var(--dialog-width)'`), since
+// `UNSAFE_style` on AlertDialog passes straight through to the inline
+// style of the underlying Dialog and beats the size-driven class.
+const wideDialogStyle = {
+  '--dialog-width': tokenSchema.size.dialog.medium,
+} as CSSProperties;
+
 const storedValSchema = s.type({
   version: s.literal(1),
   savedAt: s.date(),
@@ -108,7 +128,11 @@ const storedValSchema = s.type({
 
 function ItemPageInner(
   props: ItemPageProps & {
-    onUpdate: (options?: { branch: string; sha: string }) => Promise<boolean>;
+    onUpdate: (options?: {
+      branch?: string;
+      sha?: string;
+      redirect?: { from: string; to: string };
+    }) => Promise<boolean>;
     onReset: () => void;
     updateResult: ReturnType<typeof useUpsertItem>[0];
     onResetUpdateItem: () => void;
@@ -136,12 +160,24 @@ function ItemPageInner(
   const currentBranch = useCurrentBranch();
   const repoInfo = useRepoInfo();
   const [forceValidation, setForceValidation] = useState(false);
-  const previewHref = collectionConfig.previewUrl
-    ? collectionConfig.previewUrl
-        .replace('{slug}', props.itemSlug)
-        .replace('{branch}', currentBranch)
-    : undefined;
+  const urlForSlug = (slug: string) =>
+    collectionConfig.previewUrl
+      ? collectionConfig.previewUrl
+          .replace('{slug}', slug)
+          .replace('{branch}', currentBranch)
+      : undefined;
+  const previewHref = urlForSlug(props.itemSlug);
   const { push, replace } = router;
+  const [pendingRename, setPendingRename] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+  // The redirect decision the user last made (or explicitly declined) for
+  // this rename, kept around so a subsequent branch-protection/fork retry —
+  // which re-invokes the save — doesn't silently drop it.
+  const [confirmedRedirect, setConfirmedRedirect] = useState<
+    { from: string; to: string } | undefined
+  >(undefined);
 
   const slugInfo = useSlugFieldInfo(collection, itemSlug);
 
@@ -151,12 +187,14 @@ function ItemPageInner(
     basePath: currentBasePath,
   });
 
-  const onDelete = useEventCallback(async () => {
-    // TODO: delete multiplayer draft
-    if (await deleteItem()) {
-      push(`${props.basePath}/collection/${encodeURIComponent(collection)}`);
+  const onDelete = useEventCallback(
+    async (redirect?: { from: string; to: string }) => {
+      // TODO: delete multiplayer draft
+      if (await deleteItem({ redirect })) {
+        push(`${props.basePath}/collection/${encodeURIComponent(collection)}`);
+      }
     }
-  });
+  );
 
   const onDuplicate = () => {
     push(
@@ -172,6 +210,24 @@ function ItemPageInner(
   // Cloudflare build on its own — only merging a brand into the default
   // branch does. See plan/brand.md §11.
 
+  // Saves the entry, optionally folding a `from → to` 301 into the same
+  // commit (see useUpsertItem's `redirect` option in updating.tsx). Shared by
+  // the direct-save path below and by the rename-confirm dialog's actions.
+  const saveAndMaybeNavigate = useEventCallback(
+    async (redirect?: { from: string; to: string }) => {
+      const slug = getSlugFromState(collectionConfig, props.state);
+      const hasUpdated = await parentOnUpdate(redirect ? { redirect } : undefined);
+      if (hasUpdated && slug !== itemSlug) {
+        replace(
+          `${props.basePath}/collection/${encodeURIComponent(
+            collection
+          )}/item/${encodeURIComponent(slug)}`
+        );
+      }
+      return hasUpdated;
+    }
+  );
+
   const onUpdate = useEventCallback(async () => {
     if (isSavingDisabled) return false;
     if (!clientSideValidateProp(schema, props.state, slugInfo)) {
@@ -179,15 +235,17 @@ function ItemPageInner(
       return false;
     }
     const slug = getSlugFromState(collectionConfig, props.state);
-    const hasUpdated = await parentOnUpdate();
-    if (hasUpdated && slug !== itemSlug) {
-      replace(
-        `${props.basePath}/collection/${encodeURIComponent(
-          collection
-        )}/item/${encodeURIComponent(slug)}`
-      );
+    // Renaming a published entry silently 404s its old URL — hold off on
+    // saving and ask whether to leave a 301 behind (only possible when the
+    // collection declares `previewUrl`, since that's how we derive the
+    // public path from a slug; drystack itself doesn't know the site's
+    // routing).
+    if (slug !== itemSlug && collectionConfig.previewUrl) {
+      setPendingRename({ from: urlForSlug(itemSlug)!, to: urlForSlug(slug)! });
+      return false;
     }
-    return hasUpdated;
+    setConfirmedRedirect(undefined);
+    return saveAndMaybeNavigate();
   });
 
   const onCopy = useEventCallback(() => {
@@ -253,6 +311,10 @@ function ItemPageInner(
             isLoading={updateResult.kind === 'loading'}
             hasChanged={props.hasChanged}
             onDelete={onDelete}
+            collection={collection}
+            itemSlug={itemSlug}
+            previewUrl={collectionConfig.previewUrl}
+            urlForSlug={urlForSlug}
             onDuplicate={onDuplicate}
             onCopy={onCopy}
             onPaste={onPaste}
@@ -291,6 +353,42 @@ function ItemPageInner(
             />
           </EntryDirectoryProvider>
         </Box>
+        <DialogContainer onDismiss={() => setPendingRename(null)}>
+          {pendingRename && (
+            <AlertDialog
+              title="Change entry URL"
+              tone="neutral"
+              cancelLabel="Cancel"
+              secondaryActionLabel="Rename without redirect"
+              primaryActionLabel="Create 301 redirect"
+              autoFocusButton="primary"
+              UNSAFE_style={wideDialogStyle}
+              onPrimaryAction={() => {
+                const redirect = pendingRename;
+                setPendingRename(null);
+                setConfirmedRedirect(redirect);
+                saveAndMaybeNavigate(redirect);
+              }}
+              onSecondaryAction={() => {
+                setPendingRename(null);
+                setConfirmedRedirect(undefined);
+                saveAndMaybeNavigate();
+              }}
+            >
+              <Text>
+                This entry is currently at{' '}
+                <Text elementType="span" UNSAFE_className={codeText}>
+                  {pendingRename.from}
+                </Text>
+                . Renaming it will change its URL to{' '}
+                <Text elementType="span" UNSAFE_className={codeText}>
+                  {pendingRename.to}
+                </Text>{' '}
+                — without a redirect, the old URL will 404.
+              </Text>
+            </AlertDialog>
+          )}
+        </DialogContainer>
         <DialogContainer
           // ideally this would be a popover on desktop but using a DialogTrigger wouldn't work since
           // this doesn't open on click but after doing a network request and it failing and manually wiring about a popover and modal would be a pain
@@ -311,6 +409,7 @@ function ItemPageInner(
                 const hasUpdated = await parentOnUpdate({
                   branch: newBranch,
                   sha: baseCommit,
+                  redirect: confirmedRedirect,
                 });
                 if (hasUpdated && slug !== itemSlug) {
                   router.replace(itemBasePath + encodeURIComponent(slug));
@@ -333,7 +432,9 @@ function ItemPageInner(
               <ForkRepoDialog
                 onCreate={async () => {
                   const slug = getSlugFromState(collectionConfig, props.state);
-                  const hasUpdated = await props.onUpdate();
+                  const hasUpdated = await parentOnUpdate({
+                    redirect: confirmedRedirect,
+                  });
                   if (hasUpdated && slug !== itemSlug) {
                     router.replace(
                       `${props.basePath}/collection/${encodeURIComponent(
@@ -494,7 +595,11 @@ function HeaderActions(props: {
   formID: string;
   hasChanged: boolean;
   isLoading: boolean;
-  onDelete: () => void;
+  onDelete: (redirect?: { from: string; to: string }) => void;
+  collection: string;
+  itemSlug: string;
+  previewUrl?: string;
+  urlForSlug: (slug: string) => string | undefined;
   onDuplicate: () => void;
   onReset: () => void;
   onCopy: () => void;
@@ -507,6 +612,10 @@ function HeaderActions(props: {
     hasChanged,
     isLoading,
     onDelete,
+    collection,
+    itemSlug,
+    previewUrl,
+    urlForSlug,
     onDuplicate,
     onReset,
     onCopy,
@@ -518,6 +627,13 @@ function HeaderActions(props: {
   const stringFormatter = useLocalizedStringFormatter(l10nMessages);
   const [deleteAlertIsOpen, setDeleteAlertOpen] = useState(false);
   const [duplicateAlertIsOpen, setDuplicateAlertOpen] = useState(false);
+  const otherSlugs = useSlugsInCollection(collection).filter(
+    s => s !== itemSlug
+  );
+  const itemUrl = previewUrl ? urlForSlug(itemSlug) : undefined;
+  const parentUrl = previewUrl
+    ? previewUrl.split('{slug}')[0].replace(/\/$/, '') || '/'
+    : undefined;
   const menuActions = useMemo(() => {
     type ActionType = {
       icon: ReactElement;
@@ -668,16 +784,17 @@ function HeaderActions(props: {
       </Button>
       <DialogContainer onDismiss={() => setDeleteAlertOpen(false)}>
         {deleteAlertIsOpen && (
-          <AlertDialog
-            title="Delete entry"
-            tone="critical"
-            cancelLabel="Cancel"
-            primaryActionLabel="Yes, delete"
-            autoFocusButton="cancel"
-            onPrimaryAction={onDelete}
-          >
-            Are you sure? This action cannot be undone.
-          </AlertDialog>
+          <DeleteEntryDialog
+            itemUrl={itemUrl}
+            parentUrl={parentUrl}
+            otherSlugs={otherSlugs}
+            urlForSlug={urlForSlug}
+            onDelete={redirect => {
+              setDeleteAlertOpen(false);
+              onDelete(redirect);
+            }}
+            onDismiss={() => setDeleteAlertOpen(false)}
+          />
         )}
       </DialogContainer>
       <DialogContainer onDismiss={() => setDuplicateAlertOpen(false)}>
@@ -695,6 +812,90 @@ function HeaderActions(props: {
         )}
       </DialogContainer>
     </Flex>
+  );
+}
+
+// Deleting a published entry silently 404s its old URL, same as a rename.
+// `itemUrl`/`parentUrl` are only defined when the collection declares
+// `previewUrl` (see ItemPageInner) — without a public URL there's nothing to
+// redirect *from*, so the picker is skipped and this behaves like a plain
+// delete confirmation.
+function DeleteEntryDialog(props: {
+  itemUrl?: string;
+  parentUrl?: string;
+  otherSlugs: string[];
+  urlForSlug: (slug: string) => string | undefined;
+  onDelete: (redirect?: { from: string; to: string }) => void;
+  onDismiss: () => void;
+}) {
+  const [target, setTarget] = useState<'none' | 'parent' | 'entry'>('none');
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+
+  const redirect = (() => {
+    if (!props.itemUrl) return undefined;
+    if (target === 'parent' && props.parentUrl) {
+      return { from: props.itemUrl, to: props.parentUrl };
+    }
+    if (target === 'entry' && selectedSlug) {
+      const to = props.urlForSlug(selectedSlug);
+      return to ? { from: props.itemUrl, to } : undefined;
+    }
+    return undefined;
+  })();
+
+  return (
+    <AlertDialog
+      title="Delete entry"
+      tone="critical"
+      cancelLabel="Cancel"
+      primaryActionLabel="Yes, delete"
+      isPrimaryActionDisabled={target === 'entry' && !selectedSlug}
+      autoFocusButton="cancel"
+      UNSAFE_style={wideDialogStyle}
+      onPrimaryAction={() => props.onDelete(redirect)}
+    >
+      <Flex direction="column" gap="large">
+        <Text>Are you sure? This action cannot be undone.</Text>
+        {props.itemUrl && (
+          <RadioGroup
+            label="After deleting, the old URL should"
+            value={target}
+            onChange={value => setTarget(value as typeof target)}
+          >
+            <Radio value="none">Return a 404 (no redirect)</Radio>
+            {props.parentUrl && (
+              <Radio value="parent">
+                <Text>
+                  301 redirect to the listing page (
+                  <Text elementType="span" UNSAFE_className={codeText}>
+                    {props.parentUrl}
+                  </Text>
+                  )
+                </Text>
+              </Radio>
+            )}
+            <Radio value="entry">301 redirect to another entry</Radio>
+          </RadioGroup>
+        )}
+        {props.itemUrl && target === 'entry' && (
+          <Combobox
+            aria-label="Target entry"
+            defaultItems={props.otherSlugs.map(slug => ({ slug }))}
+            selectedKey={selectedSlug}
+            onSelectionChange={key =>
+              setSelectedSlug(typeof key === 'string' ? key : null)
+            }
+            menuTrigger="focus"
+          >
+            {item => (
+              <Item key={item.slug} textValue={item.slug}>
+                <Text>{item.slug}</Text>
+              </Item>
+            )}
+          </Combobox>
+        )}
+      </Flex>
+    </AlertDialog>
   );
 }
 

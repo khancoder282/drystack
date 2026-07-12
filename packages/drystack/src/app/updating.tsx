@@ -3,7 +3,7 @@ import { assert } from 'emery';
 import { useContext, useState } from 'react';
 
 import { ComponentSchema, fields } from '../form/api';
-import { dump } from 'js-yaml';
+import { dump, load } from 'js-yaml';
 import { useMutation } from 'urql';
 import {
   fetchGitHubTreeData,
@@ -22,9 +22,15 @@ import { FormatInfo, getEntryDataFilepath, getPathPrefix } from './path-utils';
 import {
   getTreeNodeAtPath,
   TreeEntry,
+  TreeNode,
   treeSha,
   updateTreeWithChanges,
 } from './trees';
+import {
+  appendRedirect,
+  parseRedirectEntries,
+  REDIRECTS_FILE_PATH,
+} from './redirects';
 import { Config } from '..';
 import { getDirectoriesForTreeKey, getTreeKey } from './tree-key';
 import { AppSlugContext } from './onboarding/install-app';
@@ -107,6 +113,39 @@ export function serializeEntryToFiles(args: {
   ];
 }
 
+// Read the current redirect table from the tree, add `redirect`, and return the
+// serialized `redirects/index.yaml` addition (path already prefixed). Shared by
+// item save (rename) and delete so the 301 lands in the *same* commit / `/update`
+// call as the change that killed the old URL — no drift if the commit fails.
+// Works for both storage kinds via the existing `fetchBlob` path.
+async function buildRedirectAddition(args: {
+  config: Config;
+  unscopedTree: Map<string, TreeNode>;
+  pathPrefix: string;
+  redirect: { from: string; to: string };
+  baseCommit: string;
+  repoInfo: { owner: string; name: string; isPrivate: boolean } | null;
+  rootPath: string;
+}): Promise<{ path: string; contents: Uint8Array }> {
+  const path = args.pathPrefix + REDIRECTS_FILE_PATH;
+  let entries = parseRedirectEntries(null);
+  const existing = getTreeNodeAtPath(args.unscopedTree, path);
+  if (existing?.entry.type === 'blob' && existing.entry.sha) {
+    const bytes = await fetchBlob(
+      args.config,
+      existing.entry.sha,
+      path,
+      args.baseCommit,
+      args.repoInfo,
+      args.rootPath
+    );
+    entries = parseRedirectEntries(load(textDecoder.decode(bytes)));
+  }
+  const nextEntries = appendRedirect(entries, args.redirect);
+  const contents = textEncoder.encode(dump({ entries: nextEntries }));
+  return { path, contents };
+}
+
 export function useUpsertItem(args: {
   state: unknown;
   initialFiles: string[] | undefined;
@@ -139,7 +178,11 @@ export function useUpsertItem(args: {
 
   return [
     state,
-    async (override?: { sha: string; branch: string }): Promise<boolean> => {
+    async (override?: {
+      sha?: string;
+      branch?: string;
+      redirect?: { from: string; to: string };
+    }): Promise<boolean> => {
       try {
         const unscopedTree =
           unscopedTreeData.kind === 'loaded'
@@ -219,6 +262,25 @@ export function useUpsertItem(args: {
           const existing = getTreeNodeAtPath(unscopedTree, addition.path);
           return existing?.entry.sha !== sha;
         });
+
+        // Rename with a requested redirect: fold `from → to` into
+        // redirects/index.yaml in this same commit/`/update` call, so the
+        // 301 table never drifts out of sync with the rename that created it.
+        // Added after the unchanged-blob filter above (which it deliberately
+        // bypasses) since it's always a real content change when requested.
+        if (override?.redirect) {
+          additions.push(
+            await buildRedirectAddition({
+              config: args.config,
+              unscopedTree,
+              pathPrefix,
+              redirect: override.redirect,
+              baseCommit: override?.sha ?? baseCommit,
+              repoInfo,
+              rootPath,
+            })
+          );
+        }
 
         const deletions: { path: string }[] = [...filesToDelete].map(path => ({
           path,
@@ -394,7 +456,7 @@ export function useDeleteItem(args: {
 
   return [
     state,
-    async () => {
+    async (opts?: { redirect?: { from: string; to: string } }) => {
       try {
         const unscopedTree =
           unscopedTreeData.kind === 'loaded'
@@ -432,8 +494,22 @@ export function useDeleteItem(args: {
             ...cascadeDeletions,
           ]),
         ];
+        // deleting an entry the user wants redirected: fold it into
+        // redirects/index.yaml in this same commit/`/update` call, exactly
+        // like the rename path in useUpsertItem above.
+        const redirectAddition = opts?.redirect
+          ? await buildRedirectAddition({
+              config,
+              unscopedTree,
+              pathPrefix: prefix,
+              redirect: opts.redirect,
+              baseCommit,
+              repoInfo,
+              rootPath,
+            })
+          : undefined;
         const updatedTree = await updateTreeWithChanges(unscopedTree, {
-          additions: [],
+          additions: redirectAddition ? [redirectAddition] : [],
           deletions,
         });
         await hydrateTreeCacheWithEntries(updatedTree.entries);
@@ -450,6 +526,14 @@ export function useDeleteItem(args: {
               message: { headline: `Delete ${args.basePath}` },
               expectedHeadOid: baseCommit,
               fileChanges: {
+                additions: redirectAddition
+                  ? [
+                      {
+                        ...redirectAddition,
+                        contents: base64Encode(redirectAddition.contents),
+                      },
+                    ]
+                  : [],
                 deletions: deletions.map(path => ({ path })),
               },
             },
@@ -496,6 +580,12 @@ export function useDeleteItem(args: {
               })
             )
           ).filter((x): x is NonNullable<typeof x> => x !== null);
+          if (redirectAddition) {
+            additions.push({
+              path: redirectAddition.path,
+              contents: base64Encode(redirectAddition.contents),
+            });
+          }
           const res = await fetch(`/api${rootPath}/update`, {
             method: 'POST',
             headers: {
