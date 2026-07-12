@@ -49,7 +49,7 @@ export async function mount(
   await applyPendingEdits();
   // Live-sync this page's DOM with edits published from the admin panel or
   // another visual-editor tab — kept active regardless of edit-mode state.
-  subscribeToRemoteEdits();
+  subscribeToRemoteEdits(config);
 
   const style = document.createElement('style');
   style.textContent = editorStyles;

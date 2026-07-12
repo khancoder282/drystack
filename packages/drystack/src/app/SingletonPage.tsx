@@ -376,6 +376,16 @@ function LocalSingletonPage(
     })
   );
 
+  // Per-field values a *remote* save/reset (another tab, or the visual
+  // editor) has already committed to disk — see the subscribeEdits handler
+  // below. Merged into `initialState` for the hasChanged/"Unsaved" check so
+  // content saved from elsewhere doesn't keep showing as locally unsaved.
+  // Reset alongside `state` whenever the tree genuinely reloads (below):
+  // the fresh `initialState` prop already carries these values then.
+  const [committedOverrides, setCommittedOverrides] = useState<
+    Record<string, string>
+  >({});
+
   useShowRestoredDraftMessage(draft, state, localTreeKey);
 
   if (localTreeKeyInState !== localTreeKey) {
@@ -384,12 +394,22 @@ function LocalSingletonPage(
       state:
         initialState === null ? getInitialPropsValue(schema) : initialState,
     });
+    setCommittedOverrides({});
   }
+
+  const effectiveInitialState = useMemo(() => {
+    if (initialState === null) return null;
+    return { ...initialState, ...committedOverrides };
+  }, [initialState, committedOverrides]);
 
   const isCreating = initialState === null;
   const hasChanged =
-    useHasChanged({ initialState, state, schema, slugField: undefined }) ||
-    isCreating;
+    useHasChanged({
+      initialState: effectiveInitialState,
+      state,
+      schema,
+      slugField: undefined,
+    }) || isCreating;
 
   useEffect(() => {
     const key = ['singleton', singleton] as const;
@@ -441,6 +461,11 @@ function LocalSingletonPage(
   // remote update from immediately bouncing back out as if it were a local
   // edit.
   const lastSyncedRef = useRef<Record<string, string> | undefined>(undefined);
+  // Lets the long-lived subscribeEdits callback below read the *current*
+  // state without re-subscribing on every keystroke (state isn't in that
+  // effect's deps) — assigned fresh every render.
+  const stateRef = useRef(state);
+  stateRef.current = state;
   if (!lastSyncedRef.current) {
     lastSyncedRef.current = {};
     for (const [field, fieldSchema] of Object.entries(singletonConfig.schema)) {
@@ -500,20 +525,48 @@ function LocalSingletonPage(
 
   useEffect(() => {
     return subscribeEdits(msg => {
-      if (msg.type !== 'set') return;
-      const { type, name, field } = parseEditKey(msg.key);
-      if (type !== 'singleton' || name !== singleton) return;
-      if (!isSyncableTextField(singletonConfig.schema[field])) return;
-      // Don't stomp on what the user is actively typing — the field's
-      // wrapper div carries data-field (object/ui.tsx) for exactly this
-      // check. Last-write-wins once they move on: either their own next
-      // edit publishes over this, or a later message applies here.
-      const fieldEl = document.querySelector(
-        `[data-field="${CSS.escape(field)}"]`
-      );
-      if (fieldEl?.contains(document.activeElement)) return;
-      lastSyncedRef.current![field] = msg.value;
-      onPreviewPropsChange(s => ({ ...s, [field]: msg.value }));
+      if (msg.type === 'set') {
+        const { type, name, field } = parseEditKey(msg.key);
+        if (type !== 'singleton' || name !== singleton) return;
+        if (!isSyncableTextField(singletonConfig.schema[field])) return;
+        // Don't stomp on what the user is actively typing — the field's
+        // wrapper div carries data-field (object/ui.tsx) for exactly this
+        // check. Last-write-wins once they move on: either their own next
+        // edit publishes over this, or a later message applies here.
+        const fieldEl = document.querySelector(
+          `[data-field="${CSS.escape(field)}"]`
+        );
+        if (fieldEl?.contains(document.activeElement)) return;
+        lastSyncedRef.current![field] = msg.value;
+        onPreviewPropsChange(s => ({ ...s, [field]: msg.value }));
+        return;
+      }
+      // 'delete' / 'clear' — the field(s) are no longer pending anywhere,
+      // because they were just saved (or discarded) on another tab/surface.
+      // Whatever this tab currently shows for them is that same saved/
+      // reverted value (it already tracked live 'set' messages up to this
+      // point), so it becomes the new "nothing to save" baseline — otherwise
+      // the Unsaved badge and the full-entry draft (both driven by
+      // hasChanged, which compares against `initialState`) would keep
+      // treating already-committed content as locally unsaved forever.
+      const fields =
+        msg.type === 'delete'
+          ? (() => {
+              const { type, name, field } = parseEditKey(msg.key);
+              return type === 'singleton' && name === singleton ? [field] : [];
+            })()
+          : Object.keys(singletonConfig.schema);
+      setCommittedOverrides(prev => {
+        let next: Record<string, string> | undefined;
+        for (const field of fields) {
+          if (!isSyncableTextField(singletonConfig.schema[field])) continue;
+          const value = (stateRef.current as Record<string, unknown>)[field];
+          if (typeof value !== 'string' || prev[field] === value) continue;
+          next ??= { ...prev };
+          next[field] = value;
+        }
+        return next ?? prev;
+      });
     });
   }, [singleton, singletonConfig.schema, onPreviewPropsChange]);
 
@@ -553,7 +606,9 @@ function LocalSingletonPage(
     setState({
       localTreeKey: localTreeKey,
       state:
-        initialState === null ? getInitialPropsValue(schema) : initialState,
+        effectiveInitialState === null
+          ? getInitialPropsValue(schema)
+          : effectiveInitialState,
     });
   return (
     <SingletonPageInner

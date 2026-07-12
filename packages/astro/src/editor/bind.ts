@@ -102,16 +102,18 @@ export async function discardEditsIfBuildIsNewer(
 }
 
 // Re-reads every on-page singleton straight from its real source (local API,
-// or the GitHub Contents API at the default branch) and repaints any field
-// that has no pending edit — called when entering edit mode so a visitor
-// starts from what's actually on disk/GitHub, not from HTML that may be
-// stale (a github-mode page can be served from a Cloudflare CDN edge that
-// hasn't caught up with the latest deploy yet). Fields with a pending edit
-// are left alone: unsaved typed content always wins over a fresh fetch.
-// Best-effort — a fetch failure (e.g. no GitHub auth cookie) just leaves the
-// server-rendered text in place rather than blocking edit mode.
+// or the GitHub Contents API at the default branch) and repaints fields from
+// it — called when entering edit mode so a visitor starts from what's
+// actually on disk/GitHub, not from HTML that may be stale (a github-mode
+// page can be served from a Cloudflare CDN edge that hasn't caught up with
+// the latest deploy yet). By default fields with a pending edit are left
+// alone (unsaved typed content wins over a fresh fetch); pass
+// `overwritePending: true` to repaint those too — used by resetPendingEdits,
+// where discarding *is* the point. Best-effort — a fetch failure (e.g. no
+// GitHub auth cookie) just leaves the current text in place.
 export async function refreshFromLatestSource(
-  config: Config<any, any>
+  config: Config<any, any>,
+  options?: { overwritePending?: boolean }
 ): Promise<void> {
   const singletonNames = new Set<string>();
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
@@ -119,7 +121,9 @@ export async function refreshFromLatestSource(
     if (type === 'singleton' && name) singletonNames.add(name);
   });
 
-  const pendingKeys = new Set((await getAllEdits()).map(edit => edit.key));
+  const pendingKeys = options?.overwritePending
+    ? new Set<string>()
+    : new Set((await getAllEdits()).map(edit => edit.key));
 
   await Promise.all(
     Array.from(singletonNames, async name => {
@@ -147,14 +151,20 @@ export async function refreshFromLatestSource(
 }
 
 // Discards every pending edit: restores each on-page field to its captured
-// baseline (kept accurate by refreshFromLatestSource/applyPendingEdits) and
-// clears the IndexedDB edit log — no network fetch needed.
-export async function resetPendingEdits(): Promise<void> {
+// baseline first (instant, always available — the floor if the fetch below
+// fails), then best-effort re-fetches from the true source and overwrites
+// with that instead — the captured baseline can itself be stale if someone
+// else committed to GitHub after this page entered edit mode, and discarding
+// should land on what's actually live now, not on a stale snapshot.
+export async function resetPendingEdits(
+  config: Config<any, any>
+): Promise<void> {
   document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
     const key = el.getAttribute('data-dry');
     const original = key ? getOriginalValue(key) : undefined;
     if (original !== undefined) el.textContent = original;
   });
+  await refreshFromLatestSource(config, { overwritePending: true });
   await publishClear();
 }
 
@@ -175,18 +185,6 @@ function applyEdit(key: string, value: string): void {
   });
 }
 
-// Repaints every element for `key` back to its captured baseline — used when
-// a remote tab deletes/clears an edit this page had already painted.
-function restoreOriginal(key: string): void {
-  const original = getOriginalValue(key);
-  if (original === undefined) return;
-  document
-    .querySelectorAll<HTMLElement>(`[data-dry="${CSS.escape(key)}"]`)
-    .forEach(el => {
-      el.textContent = original;
-    });
-}
-
 // Applies edits saved in IndexedDB on top of the server-rendered DOM — runs
 // on every page load (even before Edit mode is turned on) so an unsaved edit
 // survives a reload, per plan.md's "chưa lưu thì reload phải lấy IndexDB".
@@ -201,19 +199,21 @@ export async function applyPendingEdits(): Promise<number> {
 // cross-tab requirement. Returns an unsubscribe function; the editor mounts
 // once per page load and is never torn down, so callers are free to ignore it.
 export function subscribeToRemoteEdits(
+  config: Config<any, any>,
   onChange?: () => void
 ): () => void {
   return subscribeEdits((msg: EditBusMessage) => {
     if (msg.type === 'set') {
       applyEdit(msg.key, msg.value);
-    } else if (msg.type === 'delete') {
-      restoreOriginal(msg.key);
-    } else {
-      document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
-        const key = el.getAttribute('data-dry');
-        if (key) restoreOriginal(key);
-      });
+      onChange?.();
+      return;
     }
-    onChange?.();
+    // 'delete' / 'clear' — a save (this key's edit is now committed) or a
+    // reset (it's discarded) happened somewhere. Either way this tab's own
+    // `originalValues` snapshot is unreliable as "the current truth": for a
+    // save it's the *pre-edit* value, not what's now on disk/GitHub. Re-fetch
+    // for real instead of guessing, so a bystander tab always ends up
+    // showing what's actually live, not a stale local baseline.
+    refreshFromLatestSource(config).then(() => onChange?.());
   });
 }
