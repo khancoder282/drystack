@@ -6,7 +6,7 @@ const decoder = new TextDecoder();
 
 async function deriveKey(secret: string, salt: Uint8Array) {
   if (secret.length < 32) {
-    throw new Error('KEYSTATIC_SECRET must be at least 32 characters long');
+    throw new Error('DRYSTACK_SECRET must be at least 32 characters long');
   }
   const encoded = encoder.encode(secret);
   const key = await webcrypto.subtle.importKey('raw', encoded, 'HKDF', false, [

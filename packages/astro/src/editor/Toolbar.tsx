@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Config } from '@drystack/core';
 // @ts-expect-error — provided by the drystack Astro integration's Vite plugin
-import apiPath from 'virtual:keystatic-path';
+import apiPath from 'virtual:drystack-path';
 import { Badge } from '@keystar/ui/badge';
 import { ActionButton, Button, ButtonGroup } from '@keystar/ui/button';
 import { Dialog, DialogContainer, useDialogContainer } from '@keystar/ui/dialog';

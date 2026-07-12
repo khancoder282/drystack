@@ -3,10 +3,10 @@
 // Runtime types generated with workerd@1.20260708.1 2025-01-01 nodejs_compat
 interface __BaseEnv_Env {
 	ASSETS: Fetcher;
-	KEYSTATIC_GITHUB_CLIENT_ID: string;
-	KEYSTATIC_GITHUB_CLIENT_SECRET: string;
-	KEYSTATIC_SECRET: string;
-	PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
+	DRYSTACK_GITHUB_CLIENT_ID: string;
+	DRYSTACK_GITHUB_CLIENT_SECRET: string;
+	DRYSTACK_SECRET: string;
+	PUBLIC_DRYSTACK_GITHUB_APP_SLUG: string;
 	BUILD_STATUS_HUB: DurableObjectNamespace /* BuildStatusHub */;
 }
 declare namespace Cloudflare {

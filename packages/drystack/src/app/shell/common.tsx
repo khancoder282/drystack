@@ -10,7 +10,7 @@ export function useBrand() {
   let prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
   let brandMark = <ZapLogo />;
-  let brandName = 'Keystatic';
+  let brandName = 'Drystack';
 
   if (config.ui?.brand?.mark) {
     let BrandMark = config.ui.brand.mark;

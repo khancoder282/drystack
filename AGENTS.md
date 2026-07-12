@@ -12,7 +12,7 @@ Checklist for any change that reads or writes content:
 
 ## Configuration
 
-The Keystatic-based CMS config file is `drystack.config.ts` at the project root (this fork renames it from upstream's `keystatic.config.ts`). The Astro integration (`packages/astro/src/index.ts`) resolves the `virtual:keystatic-config` module to this filename and lists it in Vite's `optimizeDeps.entries` — if renamed again, update both spots plus any direct imports (e.g. `src/pages/index.astro`).
+The Keystatic-based CMS config file is `drystack.config.ts` at the project root (this fork renames it from upstream's `keystatic.config.ts`). The Astro integration (`packages/astro/src/index.ts`) resolves the `virtual:drystack-config` module to this filename and lists it in Vite's `optimizeDeps.entries` — if renamed again, update both spots plus any direct imports (e.g. `src/pages/index.astro`).
 
 ## Media library
 

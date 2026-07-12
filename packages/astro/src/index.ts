@@ -11,10 +11,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 // real Node process, where `fs` writes actually work.
 const DRYSTACK_NODE_ENV = 'drystack_local_api';
 
-const virtualPathModuleId = 'virtual:keystatic-path';
+const virtualPathModuleId = 'virtual:drystack-path';
 const resolvedVirtualPathModuleId = '\0' + virtualPathModuleId;
 
-const virtualBuildVersionModuleId = 'virtual:keystatic-build-version';
+const virtualBuildVersionModuleId = 'virtual:drystack-build-version';
 const resolvedVirtualBuildVersionModuleId = '\0' + virtualBuildVersionModuleId;
 
 // Runs the drystack API handler in the Node dev process (not workerd), so
@@ -37,7 +37,7 @@ async function handleLocalApiRequest(
   }
   const [genericMod, configMod] = await Promise.all([
     env.runner.import('@drystack/core/api/generic'),
-    env.runner.import('virtual:keystatic-config'),
+    env.runner.import('virtual:drystack-config'),
   ]);
   const config = configMod.default;
   if (config?.storage?.kind !== 'local') {
@@ -47,7 +47,7 @@ async function handleLocalApiRequest(
 
   const handler = genericMod.makeGenericAPIRouteHandler(
     { config, basePath },
-    { slugEnvName: 'PUBLIC_KEYSTATIC_GITHUB_APP_SLUG' }
+    { slugEnvName: 'PUBLIC_DRYSTACK_GITHUB_APP_SLUG' }
   );
 
   const host = req.headers.host ?? 'localhost';
@@ -96,7 +96,7 @@ async function handleLocalApiRequest(
   else res.end(Buffer.from(responseBody as Uint8Array));
 }
 
-export default function keystatic(options?: { path?: string }): AstroIntegration {
+export default function drystack(options?: { path?: string }): AstroIntegration {
   const path = (options?.path ?? 'drystack').replace(/^\/+|\/+$/g, '');
   // Captured once per build/dev-server start. Cloudflare Pages runs a fresh
   // build on every deploy, so this timestamp is monotonically increasing
@@ -104,7 +104,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
   // to detect "a newer build was published" and discard stale IndexedDB edits.
   const buildVersion = Date.now();
   return {
-    name: 'keystatic',
+    name: 'drystack',
     hooks: {
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, config }) => {
         updateConfig({
@@ -112,9 +112,9 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
           vite: {
             plugins: [
               {
-                name: 'keystatic',
+                name: 'drystack',
                 resolveId(id) {
-                  if (id === 'virtual:keystatic-config') {
+                  if (id === 'virtual:drystack-config') {
                     return this.resolve('./drystack.config', './a');
                   }
                   if (id === virtualPathModuleId) {
@@ -137,7 +137,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
               },
             ],
             optimizeDeps: {
-              entries: ['drystack.config.*', '.astro/keystatic-imports.js'],
+              entries: ['drystack.config.*', '.astro/drystack-imports.js'],
             },
           },
         });
@@ -145,7 +145,7 @@ export default function keystatic(options?: { path?: string }): AstroIntegration
         const dotAstroDir = new URL('./.astro/', config.root);
         mkdirSync(dotAstroDir, { recursive: true });
         writeFileSync(
-          new URL('keystatic-imports.js', dotAstroDir),
+          new URL('drystack-imports.js', dotAstroDir),
           `import "@drystack/astro/ui";
 import "@drystack/astro/api";
 import "@drystack/core/ui";
@@ -154,15 +154,15 @@ import "@drystack/core/ui";
 
         injectRoute({
           // @ts-ignore — kept for Astro 2/3 where the option was named `entryPoint`
-          entryPoint: '@drystack/astro/internal/keystatic-astro-page.astro',
-          entrypoint: '@drystack/astro/internal/keystatic-astro-page.astro',
+          entryPoint: '@drystack/astro/internal/drystack-astro-page.astro',
+          entrypoint: '@drystack/astro/internal/drystack-astro-page.astro',
           pattern: `/${path}/[...params]`,
           prerender: false,
         });
         injectRoute({
           // @ts-ignore — kept for Astro 2/3 where the option was named `entryPoint`
-          entryPoint: '@drystack/astro/internal/keystatic-api.js',
-          entrypoint: '@drystack/astro/internal/keystatic-api.js',
+          entryPoint: '@drystack/astro/internal/drystack-api.js',
+          entrypoint: '@drystack/astro/internal/drystack-api.js',
           pattern: `/api/${path}/[...params]`,
           prerender: false,
         });
@@ -173,7 +173,7 @@ import "@drystack/core/ui";
         // local-storage API (`/api/<path>/update`, and reads for consistency)
         // can't run there. Intercept those requests in a Node-side Vite dev
         // middleware — it runs in the real Node host where fs writes work — and
-        // run the exact same handler `keystatic-api.js` uses. GitHub-mode
+        // run the exact same handler `drystack-api.js` uses. GitHub-mode
         // requests (OAuth, app creation) fall through to the workerd route.
         updateConfig({
           vite: {
@@ -195,7 +195,7 @@ import "@drystack/core/ui";
             },
             plugins: [
               {
-                name: 'keystatic:local-api-dev-middleware',
+                name: 'drystack:local-api-dev-middleware',
                 apply: 'serve',
                 configureServer(server) {
                   const apiPrefix = `/api/${path}`;
@@ -243,8 +243,8 @@ if (eligible) {
     window.__vite_plugin_react_preamble_installed__ = true;
   }
   const [{ default: cfg }, { default: buildVersion }, editor] = await Promise.all([
-    import('virtual:keystatic-config'),
-    import('virtual:keystatic-build-version'),
+    import('virtual:drystack-config'),
+    import('virtual:drystack-build-version'),
     import('@drystack/astro/editor'),
   ]);
   editor.mount(cfg, buildVersion);

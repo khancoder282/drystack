@@ -19,12 +19,12 @@ export function EmptyRepo(props: { repo: string }) {
           <Heading>Git repo not initialised</Heading>
         </Flex>
         <Text>
-          The Keystatic GitHub App is installed in the GitHub repository{' '}
+          The drystack GitHub App is installed in the GitHub repository{' '}
           <TextLink href={`https://github.com/${props.repo}`}>
             {props.repo}
           </TextLink>{' '}
           but the Git repo is not initialised. Please initialise the Git repo
-          before using Keystatic.
+          before using drystack.
         </Text>
       </Flex>
     </Flex>

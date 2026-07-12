@@ -2,8 +2,8 @@ import * as cookie from 'cookie';
 import * as s from 'superstruct';
 import { Config } from '..';
 import {
-  KeystaticResponse,
-  KeystaticRequest,
+  DrystackResponse,
+  DrystackRequest,
   redirect,
 } from './internal-utils';
 import { handleGitHubAppCreation, localModeApiHandler } from '#api-handler';
@@ -12,18 +12,18 @@ import { bytesToHex } from '../hex';
 import { decryptValue, encryptValue } from './encryption';
 
 export type APIRouteConfig = {
-  /** @default process.env.KEYSTATIC_GITHUB_CLIENT_ID */
+  /** @default process.env.DRYSTACK_GITHUB_CLIENT_ID */
   clientId?: string;
-  /** @default process.env.KEYSTATIC_GITHUB_CLIENT_SECRET */
+  /** @default process.env.DRYSTACK_GITHUB_CLIENT_SECRET */
   clientSecret?: string;
-  /** @default process.env.KEYSTATIC_SECRET */
+  /** @default process.env.DRYSTACK_SECRET */
   secret?: string;
   localBaseDirectory?: string;
   config: Config<any, any>;
   /**
-   * The path segment the Keystatic UI and API routes are mounted at, without slashes.
+   * The path segment the drystack UI and API routes are mounted at, without slashes.
    * e.g. 'admin' mounts the UI at /admin and the API at /api/admin.
-   * @default 'keystatic'
+   * @default 'drystack'
    */
   basePath?: string;
 };
@@ -37,13 +37,13 @@ type InnerAPIRouteConfig = {
   apiBasePath: string;
 };
 
-const keystaticRouteRegex =
+const drystackRouteRegex =
   /^branch\/[^]+(\/collection\/[^/]+(|\/(create|item\/[^/]+))|\/singleton\/[^/]+)?$/;
 
 const keyToEnvVar = {
-  clientId: 'KEYSTATIC_GITHUB_CLIENT_ID',
-  clientSecret: 'KEYSTATIC_GITHUB_CLIENT_SECRET',
-  secret: 'KEYSTATIC_SECRET',
+  clientId: 'DRYSTACK_GITHUB_CLIENT_ID',
+  clientSecret: 'DRYSTACK_GITHUB_CLIENT_SECRET',
+  secret: 'DRYSTACK_SECRET',
 };
 
 function tryOrUndefined<T>(fn: () => T) {
@@ -61,35 +61,29 @@ export function makeGenericAPIRouteHandler(
   const _config2: APIRouteConfig = {
     clientId:
       _config.clientId ??
-      tryOrUndefined(() => process.env.KEYSTATIC_GITHUB_CLIENT_ID),
+      tryOrUndefined(() => process.env.DRYSTACK_GITHUB_CLIENT_ID),
     clientSecret:
       _config.clientSecret ??
-      tryOrUndefined(() => process.env.KEYSTATIC_GITHUB_CLIENT_SECRET),
+      tryOrUndefined(() => process.env.DRYSTACK_GITHUB_CLIENT_SECRET),
     secret:
-      _config.secret ?? tryOrUndefined(() => process.env.KEYSTATIC_SECRET),
+      _config.secret ?? tryOrUndefined(() => process.env.DRYSTACK_SECRET),
     config: _config.config,
     basePath: _config.basePath,
   };
 
-  const rawBasePath = (_config2.basePath ?? 'keystatic').replace(
+  const rawBasePath = (_config2.basePath ?? 'drystack').replace(
     /^\/+|\/+$/g,
     ''
   );
   const uiBasePath = `/${rawBasePath}`;
   const apiBasePath = `/api/${rawBasePath}`;
 
-  const getParams = (req: KeystaticRequest) => {
+  const getParams = (req: DrystackRequest) => {
     let url;
     try {
       url = new URL(req.url);
     } catch (err) {
-      throw new Error(
-        `Found incomplete URL in Keystatic API route URL handler${
-          options?.slugEnvName === 'NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG'
-            ? ". Make sure you're using the latest version of @keystatic/next"
-            : ''
-        }`
-      );
+      throw new Error('Found incomplete URL in drystack API route URL handler');
     }
     let pathname = url.pathname;
     if (pathname.startsWith(apiBasePath)) {
@@ -106,7 +100,7 @@ export function makeGenericAPIRouteHandler(
       _config2.config,
       _config.localBaseDirectory
     );
-    return (req: KeystaticRequest) => {
+    return (req: DrystackRequest) => {
       const params = getParams(req);
       return handler(req, params);
     };
@@ -117,7 +111,7 @@ export function makeGenericAPIRouteHandler(
         ['clientId', 'clientSecret', 'secret'] as const
       ).filter(x => !_config2[x]);
       throw new Error(
-        `Missing required config in Keystatic API setup when using the 'github' storage mode:\n${missingKeys
+        `Missing required config in drystack API setup when using the 'github' storage mode:\n${missingKeys
           .map(
             key => `- ${key} (can be provided via ${keyToEnvVar[key]} env var)`
           )
@@ -126,9 +120,9 @@ export function makeGenericAPIRouteHandler(
           )}\n\nIf you've created your GitHub app locally, make sure to copy the environment variables from your local env file to your deployed environment`
       );
     }
-    return async function keystaticAPIRoute(
-      req: KeystaticRequest
-    ): Promise<KeystaticResponse> {
+    return async function drystackAPIRoute(
+      req: DrystackRequest
+    ): Promise<DrystackResponse> {
       const params = getParams(req);
       const joined = params.join('/');
       if (joined === 'github/created-app') {
@@ -153,9 +147,9 @@ export function makeGenericAPIRouteHandler(
     apiBasePath,
   };
 
-  return async function keystaticAPIRoute(
-    req: KeystaticRequest
-  ): Promise<KeystaticResponse> {
+  return async function drystackAPIRoute(
+    req: DrystackRequest
+  ): Promise<DrystackResponse> {
     const params = getParams(req);
     const joined = params.join('/');
     if (joined === 'github/oauth/callback') {
@@ -195,7 +189,7 @@ export function makeGenericAPIRouteHandler(
     if (joined === 'github/created-app') {
       return {
         status: 404,
-        body: 'It looks like you just tried to create a GitHub App for Keystatic but there is already a GitHub App configured for Keystatic.\n\nYou may be here because you started creating a GitHub App but then started the process again elsewhere and completed it there. You should likely go back to Keystatic and sign in with GitHub to continue.',
+        body: 'It looks like you just tried to create a GitHub App for drystack but there is already a GitHub App configured for drystack.\n\nYou may be here because you started creating a GitHub App but then started the process again elsewhere and completed it there. You should likely go back to drystack and sign in with GitHub to continue.',
       };
     }
     return { status: 404, body: 'Not Found' };
@@ -212,9 +206,9 @@ const tokenDataResultType = s.type({
 });
 
 async function githubOauthCallback(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   const searchParams = new URL(req.url, 'http://localhost').searchParams;
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
@@ -223,7 +217,7 @@ async function githubOauthCallback(
       status: 400,
       body: `An error occurred when trying to authenticate with GitHub:\n${errorDescription}${
         error === 'redirect_uri_mismatch'
-          ? `\n\nIf you were trying to sign in locally and recently upgraded Keystatic from @keystatic/core@0.0.69 or below, you need to add \`http://127.0.0.1${config.apiBasePath}/github/oauth/callback\` as a callback URL in your GitHub app.`
+          ? `\n\nIf you were trying to sign in locally, you need to add \`http://127.0.0.1${config.apiBasePath}/github/oauth/callback\` as a callback URL in your GitHub app.`
           : ''
       }`,
     };
@@ -236,7 +230,7 @@ async function githubOauthCallback(
   const cookies = cookie.parse(req.headers.get('cookie') ?? '');
   const fromCookie = state ? cookies['ks-' + state] : undefined;
   const from =
-    typeof fromCookie === 'string' && keystaticRouteRegex.test(fromCookie)
+    typeof fromCookie === 'string' && drystackRouteRegex.test(fromCookie)
       ? fromCookie
       : undefined;
   const url = new URL('https://github.com/login/oauth/access_token');
@@ -307,7 +301,7 @@ async function getTokenCookies(
 }
 
 async function getRefreshToken(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
 ) {
   const cookies = cookie.parse(req.headers.get('cookie') || '');
@@ -323,9 +317,9 @@ async function getRefreshToken(
 }
 
 async function githubRefreshToken(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   const headers = await refreshGitHubAuth(req, config);
   if (!headers) {
     return { status: 401, body: 'Authorization failed' };
@@ -334,7 +328,7 @@ async function githubRefreshToken(
 }
 
 async function refreshGitHubAuth(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
 ) {
   const refreshToken = await getRefreshToken(req, config);
@@ -365,9 +359,9 @@ async function refreshGitHubAuth(
 }
 
 async function githubRepoNotFound(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   const headers = await refreshGitHubAuth(req, config);
   if (headers) {
     return redirect(`${config.uiBasePath}/repo-not-found`, headers);
@@ -376,13 +370,13 @@ async function githubRepoNotFound(
 }
 
 async function githubLogin(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: InnerAPIRouteConfig
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   const reqUrl = new URL(req.url);
   const rawFrom = reqUrl.searchParams.get('from');
   const from =
-    typeof rawFrom === 'string' && keystaticRouteRegex.test(rawFrom)
+    typeof rawFrom === 'string' && drystackRouteRegex.test(rawFrom)
       ? rawFrom
       : '/';
   const state = bytesToHex(webcrypto.getRandomValues(new Uint8Array(10)));
@@ -413,10 +407,10 @@ async function githubLogin(
 }
 
 async function createdGithubApp(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   slugEnvVarName: string | undefined,
   uiBasePath: string
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   if (process.env.NODE_ENV !== 'development') {
     return { status: 400, body: 'App setup only allowed in development' };
   }

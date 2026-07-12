@@ -1,7 +1,7 @@
 import { Config } from '../config';
 import { assertValidRepoConfig } from './repo-config';
 
-export function Keystatic(props: {
+export function Drystack(props: {
   config: Config;
   appSlug?: { envName: string; value: string | undefined };
 }) {

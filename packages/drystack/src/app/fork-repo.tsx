@@ -112,7 +112,7 @@ export function ForkRepoDialog(props: {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  install the Keystatic GitHub App on your fork.
+                  install the drystack GitHub App on your fork.
                 </TextLink>
               </Text>
             </Flex>

@@ -6,8 +6,8 @@ import {
 } from './real-node';
 import { Config } from '../config';
 import {
-  KeystaticRequest,
-  KeystaticResponse,
+  DrystackRequest,
+  DrystackResponse,
   redirect,
 } from './internal-utils';
 import { readToDirEntries, getAllowedDirectories } from './read-local';
@@ -37,10 +37,10 @@ const ghAppSchema = s.type({
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function handleGitHubAppCreation(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   slugEnvVarName: string | undefined,
   uiBasePath: string
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   const searchParams = new URL(req.url, 'https://localhost').searchParams;
   const code = searchParams.get('code');
   if (typeof code !== 'string' || !/^[a-zA-Z0-9]+$/.test(code)) {
@@ -71,10 +71,10 @@ export async function handleGitHubAppCreation(
       body: 'An unexpected response was received from GitHub',
     };
   }
-  const toAddToEnv = `# Keystatic
-KEYSTATIC_GITHUB_CLIENT_ID=${ghAppDataResult.client_id}
-KEYSTATIC_GITHUB_CLIENT_SECRET=${ghAppDataResult.client_secret}
-KEYSTATIC_SECRET=${randomBytes(40).toString('hex')}
+  const toAddToEnv = `# drystack
+DRYSTACK_GITHUB_CLIENT_ID=${ghAppDataResult.client_id}
+DRYSTACK_GITHUB_CLIENT_SECRET=${ghAppDataResult.client_secret}
+DRYSTACK_SECRET=${randomBytes(40).toString('hex')}
 ${
   slugEnvVarName
     ? `${slugEnvVarName}=${ghAppDataResult.slug} # https://github.com/apps/${ghAppDataResult.slug}\n`
@@ -101,9 +101,9 @@ export function localModeApiHandler(
 ) {
   const baseDirectory = path.resolve(localBaseDirectory ?? process.cwd());
   return async (
-    req: KeystaticRequest,
+    req: DrystackRequest,
     params: string[]
-  ): Promise<KeystaticResponse> => {
+  ): Promise<DrystackResponse> => {
     const joined = params.join('/');
     if (req.method === 'GET' && joined === 'tree') {
       return tree(req, config, baseDirectory);
@@ -119,10 +119,10 @@ export function localModeApiHandler(
 }
 
 async function tree(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: Config,
   baseDirectory: string
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   if (req.headers.get('no-cors') !== '1') {
     return { status: 400, body: 'Bad Request' };
   }
@@ -142,11 +142,11 @@ function getIsPathValid(config: Config) {
 }
 
 async function blob(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: Config,
   params: string[],
   baseDirectory: string
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   if (req.headers.get('no-cors') !== '1') {
     return { status: 400, body: 'Bad Request' };
   }
@@ -180,10 +180,10 @@ const base64Schema = s.coerce(s.instance(Uint8Array), s.string(), val =>
 );
 
 async function update(
-  req: KeystaticRequest,
+  req: DrystackRequest,
   config: Config,
   baseDirectory: string
-): Promise<KeystaticResponse> {
+): Promise<DrystackResponse> {
   if (
     req.headers.get('no-cors') !== '1' ||
     req.headers.get('content-type') !== 'application/json'

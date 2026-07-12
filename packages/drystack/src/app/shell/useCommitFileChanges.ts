@@ -77,7 +77,7 @@ export function useCommitFileChanges() {
       return {
         kind: 'error',
         error: new Error(
-          `The GitHub App is unable to commit to the repository. Please ensure that the Keystatic GitHub App is installed in the GitHub repository ${repoInfo.owner}/${repoInfo.name}`
+          `The GitHub App is unable to commit to the repository. Please ensure that the drystack GitHub App is installed in the GitHub repository ${repoInfo.owner}/${repoInfo.name}`
         ),
       };
     }

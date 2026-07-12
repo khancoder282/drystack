@@ -7,7 +7,7 @@ import {
 import { loadDataFile } from '@drystack/core/required-files';
 import { dump } from '@drystack/core/yaml';
 // @ts-expect-error — provided by the drystack Astro integration's Vite plugin
-import apiPath from 'virtual:keystatic-path';
+import apiPath from 'virtual:drystack-path';
 import { getAllEdits, clearEdits } from './store';
 
 const textEncoder = new TextEncoder();

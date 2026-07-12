@@ -26,7 +26,7 @@ import { EmptyState } from './shell/empty-state';
 import { SingletonPage } from './SingletonPage';
 import { FileManagerPage } from './file-manager/FileManagerPage';
 import { CreatedGitHubApp } from './onboarding/created-github-app';
-import { KeystaticSetup } from './onboarding/setup';
+import { DrystackSetup } from './onboarding/setup';
 import { RepoNotFound } from './onboarding/repo-not-found';
 import { AppSlugProvider } from './onboarding/install-app';
 import { useRouter, RouterProvider } from './router';
@@ -109,7 +109,7 @@ function PageInner({ config }: { config: Config }) {
       return wrapper(<RedirectToBranch config={config} />);
     }
     if (params.length === 1 && isGitHubConfig(config)) {
-      if (params[0] === 'setup') return <KeystaticSetup config={config} />;
+      if (params[0] === 'setup') return <DrystackSetup config={config} />;
       if (params[0] === 'repo-not-found') {
         return <RepoNotFound config={config} />;
       }
@@ -254,7 +254,7 @@ function RedirectToLoopback(props: { children: ReactNode }) {
   return props.children;
 }
 
-export function Keystatic(props: {
+export function Drystack(props: {
   config: Config;
   appSlug?: { envName: string; value: string | undefined };
   basePath?: string;

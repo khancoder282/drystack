@@ -1,18 +1,18 @@
-export type KeystaticRequest = {
+export type DrystackRequest = {
   headers: { get(name: string): string | null };
   method: string;
   url: string;
   json: () => Promise<any>;
 };
 
-export type KeystaticResponse = ResponseInit & {
+export type DrystackResponse = ResponseInit & {
   body: Uint8Array | string | null;
 };
 
 export function redirect(
   to: string,
   initialHeaders?: [string, string][]
-): KeystaticResponse {
+): DrystackResponse {
   return {
     body: null,
     status: 307,

@@ -37,7 +37,7 @@ export const localModeApiHandler: typeof ApiNode.localModeApiHandler = (
     }
     return {
       status: 500,
-      body: "The Keystatic API route is running in a non-Node.js environment which is not supported with `storage: { kind: 'local' }`",
+      body: "The drystack API route is running in a non-Node.js environment which is not supported with `storage: { kind: 'local' }`",
     };
   };
 };
@@ -50,6 +50,6 @@ export const handleGitHubAppCreation: typeof ApiNode.handleGitHubAppCreation =
     }
     return {
       status: 500,
-      body: 'The Keystatic API route is running in a non-Node.js environment which does not support GitHub App creation',
+      body: 'The drystack API route is running in a non-Node.js environment which does not support GitHub App creation',
     };
   };

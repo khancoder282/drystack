@@ -16,8 +16,8 @@
     "./editor": "./src/editor/index.tsx",
     ".": "./src/index.ts",
     "./package.json": "./package.json",
-    "./internal/keystatic-api.js": "./internal/keystatic-api.js",
-    "./internal/keystatic-astro-page.astro": "./internal/keystatic-astro-page.astro"
+    "./internal/drystack-api.js": "./internal/drystack-api.js",
+    "./internal/drystack-astro-page.astro": "./internal/drystack-astro-page.astro"
   },
   "keywords": [
     "astro-integration"
@@ -62,8 +62,8 @@
     ],
     "exports": {
       "extra": {
-        "./internal/keystatic-api.js": "./internal/keystatic-api.js",
-        "./internal/keystatic-astro-page.astro": "./internal/keystatic-astro-page.astro"
+        "./internal/drystack-api.js": "./internal/drystack-api.js",
+        "./internal/drystack-astro-page.astro": "./internal/drystack-astro-page.astro"
       }
     }
   }

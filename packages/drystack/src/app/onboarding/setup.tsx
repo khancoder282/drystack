@@ -9,7 +9,7 @@ import { GitHubConfig } from '../..';
 import { parseRepoConfig } from '../repo-config';
 import { useRouter } from '../router';
 
-export function KeystaticSetup(props: { config: GitHubConfig }) {
+export function DrystackSetup(props: { config: GitHubConfig }) {
   const { basePath } = useRouter();
   const apiBasePath = `/api${basePath}`;
   const [deployedURL, setDeployedURL] = useState('');
@@ -32,31 +32,31 @@ export function KeystaticSetup(props: { config: GitHubConfig }) {
         method="post"
       >
         <Flex justifyContent="center">
-          <Heading>Keystatic Setup</Heading>
+          <Heading>drystack Setup</Heading>
         </Flex>
-        <Text>Keystatic doesn't have the required config.</Text>
+        <Text>drystack doesn't have the required config.</Text>
         <Text>
           If you've already created your GitHub app, make sure to add the
           following environment variables:
         </Text>
         <Box elementType="ul">
           <li>
-            <code>KEYSTATIC_GITHUB_CLIENT_ID</code>
+            <code>DRYSTACK_GITHUB_CLIENT_ID</code>
           </li>
           <li>
-            <code>KEYSTATIC_GITHUB_CLIENT_SECRET</code>
+            <code>DRYSTACK_GITHUB_CLIENT_SECRET</code>
           </li>
           <li>
-            <code>KEYSTATIC_SECRET</code>
+            <code>DRYSTACK_SECRET</code>
           </li>
         </Box>
         <Text>
-          If you haven't created your GitHub app for Keystatic, you can create
+          If you haven't created your GitHub app for drystack, you can create
           one below.
         </Text>
         <TextField
           label="Deployed App URL"
-          description="This should the root of your domain. If you're not sure where Keystatic will be deployed, leave this blank and you can update the GitHub app later."
+          description="This should the root of your domain. If you're not sure where drystack will be deployed, leave this blank and you can update the GitHub app later."
           value={deployedURL}
           onChange={setDeployedURL}
         />
@@ -78,7 +78,7 @@ export function KeystaticSetup(props: { config: GitHubConfig }) {
           value={JSON.stringify({
             name: `${
               parseRepoConfig(props.config.storage.repo).owner
-            } Keystatic`,
+            } Drystack`,
             url: deployedURL
               ? new URL(basePath, deployedURL).toString()
               : `${window.location.origin}${basePath}`,

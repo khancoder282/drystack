@@ -23,32 +23,32 @@ async function getCloudflareEnv(): Promise<
 }
 
 export function makeHandler(_config: APIRouteConfig) {
-  return async function keystaticAPIRoute(context: APIContext) {
+  return async function drystackAPIRoute(context: APIContext) {
     const envVarsForCf = await getCloudflareEnv();
     const handler = makeGenericAPIRouteHandler(
       {
         ..._config,
         clientId:
           _config.clientId ??
-          envVarsForCf?.KEYSTATIC_GITHUB_CLIENT_ID ??
+          envVarsForCf?.DRYSTACK_GITHUB_CLIENT_ID ??
           tryOrUndefined(() => {
-            return import.meta.env.KEYSTATIC_GITHUB_CLIENT_ID;
+            return import.meta.env.DRYSTACK_GITHUB_CLIENT_ID;
           }),
         clientSecret:
           _config.clientSecret ??
-          envVarsForCf?.KEYSTATIC_GITHUB_CLIENT_SECRET ??
+          envVarsForCf?.DRYSTACK_GITHUB_CLIENT_SECRET ??
           tryOrUndefined(() => {
-            return import.meta.env.KEYSTATIC_GITHUB_CLIENT_SECRET;
+            return import.meta.env.DRYSTACK_GITHUB_CLIENT_SECRET;
           }),
         secret:
           _config.secret ??
-          envVarsForCf?.KEYSTATIC_SECRET ??
+          envVarsForCf?.DRYSTACK_SECRET ??
           tryOrUndefined(() => {
-            return import.meta.env.KEYSTATIC_SECRET;
+            return import.meta.env.DRYSTACK_SECRET;
           }),
       },
       {
-        slugEnvName: 'PUBLIC_KEYSTATIC_GITHUB_APP_SLUG',
+        slugEnvName: 'PUBLIC_DRYSTACK_GITHUB_APP_SLUG',
       }
     );
     const { body, headers, status } = await handler(context.request);

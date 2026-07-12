@@ -17,9 +17,9 @@ export function CreatedGitHubApp(props: { config: GitHubConfig }) {
         gap="xlarge"
         maxWidth="scale.4600"
       >
-        <Heading>You've installed Keystatic! 🎉</Heading>
+        <Heading>You've installed drystack! 🎉</Heading>
         <Text>
-          To start using Keystatic, you need to install the GitHub app you've
+          To start using drystack, you need to install the GitHub app you've
           created.
         </Text>
         <Text>
