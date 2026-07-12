@@ -1,7 +1,13 @@
 // Pure 3-way merge logic for Deploy (see plan/brand.md §6-7). No React/IO here
 // — useDeploy.ts fetches blob text and calls into these functions.
 import { diff3Merge } from 'node-diff3';
-import { TreeData } from '../shell/data';
+
+// The only tree shape classifyChanges needs: a path→entry map where each entry
+// exposes its blob/tree `sha` and `type`. Declared as a covariant ReadonlyMap
+// so callers can pass a richer `Map<string, TreeEntry>` (admin) or a minimal
+// map built from the GitHub trees API (VEI) without a Map-invariance error —
+// keeping this module free of any React/data.tsx dependency.
+export type ClassifyTree = ReadonlyMap<string, { sha: string; type: string }>;
 
 // .yaml/.html (+.yml) are the only extensions that ever get a real 3-way text
 // merge; everything else is "never conflicts" — the brand's version always
@@ -32,14 +38,14 @@ export type ChangeClassification = {
 // side takes that side; changed differently on both sides is a conflict
 // (unless the extension is exempt, in which case brand still wins).
 export function classifyChanges(
-  base: TreeData,
-  ours: TreeData,
-  theirs: TreeData
+  base: ClassifyTree,
+  ours: ClassifyTree,
+  theirs: ClassifyTree
 ): ChangeClassification {
   const allPaths = new Set<string>([
-    ...base.entries.keys(),
-    ...ours.entries.keys(),
-    ...theirs.entries.keys(),
+    ...base.keys(),
+    ...ours.keys(),
+    ...theirs.keys(),
   ]);
 
   const takeOursAdditions: string[] = [];
@@ -47,9 +53,9 @@ export function classifyChanges(
   const conflictEligible: string[] = [];
 
   for (const path of allPaths) {
-    const b = base.entries.get(path);
-    const o = ours.entries.get(path);
-    const t = theirs.entries.get(path);
+    const b = base.get(path);
+    const o = ours.get(path);
+    const t = theirs.get(path);
     // tree (directory) entries are implied by their children; only blobs
     // are independently meaningful to diff
     if (b?.type === 'tree' || o?.type === 'tree' || t?.type === 'tree') {

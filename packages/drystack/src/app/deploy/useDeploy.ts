@@ -185,9 +185,9 @@ export function useDeploy() {
       ]);
 
       const classification: ChangeClassification = classifyChanges(
-        baseTree,
-        oursTree,
-        theirsTree
+        baseTree.entries,
+        oursTree.entries,
+        theirsTree.entries
       );
 
       const additions: { path: string; contents: Uint8Array }[] = [];

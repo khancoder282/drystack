@@ -12,27 +12,27 @@ import { getAllEdits, publishClear } from './store';
 
 const textEncoder = new TextEncoder();
 
-function base64Encode(bytes: Uint8Array): string {
+export function base64Encode(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
-function decodeBase64ToBytes(b64: string): Uint8Array {
+export function decodeBase64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
 
-function getGithubToken(): string | null {
+export function getGithubToken(): string | null {
   const match = document.cookie.match(
     /(?:^|;\s*)drystack-gh-access-token=([^;]+)/
   );
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function parseRepo(repo: string | { owner: string; name: string }) {
+export function parseRepo(repo: string | { owner: string; name: string }) {
   if (typeof repo === 'string') {
     const [owner, name] = repo.split('/');
     return { owner, name };
@@ -48,7 +48,7 @@ const textDecoder = new TextDecoder();
 // Carries GitHub's machine-readable error `type` (e.g. "STALE_DATA",
 // "BRANCH_PROTECTION_RULE_VIOLATION") so callers can react to specific
 // failure modes instead of only having a joined message string.
-class GithubGraphQLError extends Error {
+export class GithubGraphQLError extends Error {
   type?: string;
   constructor(message: string, type?: string) {
     super(message);
@@ -56,7 +56,7 @@ class GithubGraphQLError extends Error {
   }
 }
 
-async function githubGraphQL(
+export async function githubGraphQL(
   token: string,
   query: string,
   variables: Record<string, unknown>

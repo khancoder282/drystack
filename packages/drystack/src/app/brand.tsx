@@ -2,7 +2,6 @@
 // /drystack auto-creates (or reuses) one per repo, all saves commit to it, and
 // Deploy (deploy.ts) merges it into the default branch then rotates to a
 // fresh brand. See plan/brand.md for the full design.
-import { UseStore, createStore, get, set, del } from 'idb-keyval';
 import {
   ReactNode,
   createContext,
@@ -15,7 +14,6 @@ import {
 
 import { Config, GitHubConfig } from '../config';
 import { getBranchPrefix } from './utils';
-import { serializeRepoConfig } from './repo-config';
 import { useRouter } from './router';
 import { useCreateBranchMutation } from './branch-selection';
 import {
@@ -26,98 +24,25 @@ import {
 } from './shell/data';
 import { useViewer } from './shell/viewer-data';
 
-export type BrandRecord = {
-  ref: string;
-  label: string;
-  login: string;
-  createdAt: number;
-  baseCommitOid: string;
-  baseTreeSha: string;
+import {
+  readBrandRecord,
+  writeBrandRecord,
+  removeBrandRecord,
+  type BrandRecord,
+} from './brand-store';
+import { formatBrandLabel, formatBrandRef } from './brand-label';
+
+// IndexedDB persistence + brand ref/label generation live in pure, React-free
+// modules so the visual editor (VEI) can reuse them over the same origin —
+// re-exported here to keep existing admin imports of `../brand` working.
+export type { BrandRecord };
+export {
+  readBrandRecord,
+  writeBrandRecord,
+  removeBrandRecord,
+  formatBrandLabel,
+  formatBrandRef,
 };
-
-// Persistence (IndexedDB)
-// -----------------------------------------------------------------------------
-
-let store: UseStore | undefined;
-function getStore(): UseStore {
-  if (!store) {
-    store = createStore('drystack-brand', 'brands');
-  }
-  return store;
-}
-
-function repoKey(config: GitHubConfig): string {
-  return serializeRepoConfig(config.storage.repo);
-}
-
-export function readBrandRecord(
-  config: GitHubConfig
-): Promise<BrandRecord | undefined> {
-  return get(repoKey(config), getStore());
-}
-
-export function writeBrandRecord(
-  config: GitHubConfig,
-  record: BrandRecord
-): Promise<void> {
-  return set(repoKey(config), record, getStore());
-}
-
-export function removeBrandRecord(config: GitHubConfig): Promise<void> {
-  return del(repoKey(config), getStore());
-}
-
-// Label & ref generation
-// -----------------------------------------------------------------------------
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function timestampParts(date: Date) {
-  return {
-    YYYY: date.getFullYear(),
-    MM: pad(date.getMonth() + 1),
-    DD: pad(date.getDate()),
-    HH: pad(date.getHours()),
-    mm: pad(date.getMinutes()),
-    ss: pad(date.getSeconds()),
-  };
-}
-
-export function formatBrandLabel(
-  date: Date,
-  name: string,
-  role: string
-): string {
-  const { YYYY, MM, DD, HH, mm, ss } = timestampParts(date);
-  return `${YYYY}-${MM}-${DD} - ${HH}:${mm}:${ss} - ${name} - ${role}`;
-}
-
-// Allowlist (keep only [a-z0-9-]) rather than denylisting git's invalid-ref
-// characters (see branch-selection.tsx) — strictly safer, since it can't miss
-// a character git rejects, and it also collapses sequences like ".." or
-// trailing ".lock" that a denylist would need to special-case.
-function sanitizeRefSegment(input: string): string {
-  const s = input
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip diacritics, e.g. Vietnamese names
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return s || 'editor';
-}
-
-export function formatBrandRef(
-  config: GitHubConfig,
-  date: Date,
-  login: string
-): string {
-  const { YYYY, MM, DD, HH, mm, ss } = timestampParts(date);
-  const prefix = getBranchPrefix(config) ?? 'drystack/';
-  return `${prefix}${YYYY}-${MM}-${DD}-${HH}${mm}${ss}-${sanitizeRefSegment(login)}`;
-}
 
 // Reactive current-brand context
 // -----------------------------------------------------------------------------
@@ -348,7 +273,7 @@ export async function createBrand(
   }
 ): Promise<BrandRecord | null> {
   const now = new Date();
-  const ref = formatBrandRef(config, now, args.login);
+  const ref = formatBrandRef(getBranchPrefix(config), now, args.login);
   const label = formatBrandLabel(now, args.name, 'Editor');
   const result = await args.createBranch({
     input: {

@@ -59,6 +59,12 @@ body.editing [data-dry]:hover {
   flex: none;
 }
 
+/* Brand-name chip in the deploy pill — reads as a button but bounded so a long
+   brand label truncates instead of stretching the bar off-screen. */
+.dry-brandchip {
+  max-width: 220px !important;
+}
+
 .dry-fab-icon {
   position: absolute;
   inset: 0;

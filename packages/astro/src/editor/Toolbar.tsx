@@ -15,6 +15,8 @@ import { externalLinkIcon } from '@keystar/ui/icon/icons/externalLinkIcon';
 import { chevronRightIcon } from '@keystar/ui/icon/icons/chevronRightIcon';
 import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { rotateCcwIcon } from '@keystar/ui/icon/icons/rotateCcwIcon';
+import { rocketIcon } from '@keystar/ui/icon/icons/rocketIcon';
+import { gitBranchIcon } from '@keystar/ui/icon/icons/gitBranchIcon';
 import { HStack } from '@keystar/ui/layout';
 import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
@@ -29,6 +31,8 @@ import {
 } from './bind';
 import { getAllEdits, publishDelete, subscribeEdits } from './store';
 import { saveEdits, getCurrentBranchName } from './save';
+import { brandDisplayLabel } from '@drystack/core/brand-label';
+import { useVeiDeploy } from './deploy';
 
 type Spot = { key: string; name: string; field: string };
 type FieldChange = Spot & { before: string; after: string };
@@ -83,6 +87,18 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [spots, setSpots] = useState<Spot[]>([]);
 
+  // Deploy menu — a second pill (brand name + Deploy), github-only, mutually
+  // exclusive with the edit/function menu below.
+  const isGithub = config.storage.kind === 'github';
+  const [deployOpen, setDeployOpen] = useState(false);
+  const {
+    brand,
+    deploy,
+    refreshBrand,
+    isBusy: deployBusy,
+    label: deployLabel,
+  } = useVeiDeploy(config);
+
   // Hover dropdown state — the menu itself is portaled to <body>.
   const refWrapRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -105,6 +121,9 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
     if (editing) {
       disableEditing();
     } else {
+      // Opening the edit/function menu closes the deploy menu (mutually
+      // exclusive).
+      setDeployOpen(false);
       enableEditing(refreshCount);
       setSpots(readSpots());
       // Don't block entering edit mode on the network — repaint with the
@@ -113,6 +132,23 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
       refreshFromLatestSource(config).then(refreshCount);
     }
     setEditing(!editing);
+  };
+
+  const toggleDeploy = () => {
+    setDeployOpen(prev => {
+      const next = !prev;
+      if (next) {
+        // Opening deploy closes the edit/function menu and exits edit mode
+        // (disableEditing keeps pending edits — see bind.ts). Refresh the brand
+        // shown in the pill in case another tab created/rotated it.
+        if (editing) {
+          disableEditing();
+          setEditing(false);
+        }
+        refreshBrand();
+      }
+      return next;
+    });
   };
 
   const onSave = async () => {
@@ -202,8 +238,83 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
 
   const nothingToSave = pendingCount === 0;
 
+  const brandLabel = brand ? brandDisplayLabel(brand.label) : '';
+
   return (
     <div className="dry-bar">
+      {isGithub && (
+        <>
+          <Button
+            prominence="high"
+            aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
+            onPress={toggleDeploy}
+            UNSAFE_className="dry-fab"
+          >
+            <span
+              className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
+            >
+              <Icon src={rocketIcon} />
+            </span>
+            <span
+              className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
+            >
+              <Icon src={xIcon} />
+            </span>
+          </Button>
+
+          <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
+            <div className="dry-menu-inner">
+              <HStack
+                gap="regular"
+                alignItems="center"
+                backgroundColor="surface"
+                border="muted"
+                borderRadius="full"
+                paddingX="medium"
+                paddingY="regular"
+                elementType="section"
+                UNSAFE_style={{
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
+                  overflow: 'hidden',
+                }}
+              >
+                <ActionButton
+                  isDisabled={!brand}
+                  flex
+                  minWidth={0}
+                  aria-label="Copy tên brand"
+                  UNSAFE_className="dry-brandchip"
+                  onPress={() => {
+                    if (!brand) return;
+                    // Display drops the date; copying keeps the full label.
+                    navigator.clipboard.writeText(brand.label);
+                    toastQueue.positive('Đã copy tên brand', { timeout: 2000 });
+                  }}
+                >
+                  <Icon src={gitBranchIcon} />
+                  <Text truncate flex minWidth={0} title={brandLabel}>
+                    {brand ? brandLabel : 'Chưa có brand'}
+                  </Text>
+                </ActionButton>
+
+                <TooltipTrigger>
+                  <Button
+                    aria-label="Deploy"
+                    prominence="high"
+                    onPress={deploy}
+                    isDisabled={deployBusy || !brand}
+                    UNSAFE_className="dry-iconbtn"
+                  >
+                    <Icon src={rocketIcon} />
+                  </Button>
+                  <Tooltip>{deployLabel}</Tooltip>
+                </TooltipTrigger>
+              </HStack>
+            </div>
+          </div>
+        </>
+      )}
+
       <Button
         prominence="high"
         aria-label={editing ? 'Exit edit mode' : 'Edit page'}

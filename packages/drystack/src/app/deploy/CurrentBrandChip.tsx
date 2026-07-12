@@ -6,6 +6,7 @@ import { toastQueue } from '@keystar/ui/toast';
 import { Text } from '@keystar/ui/typography';
 
 import { useCurrentBrand } from '../brand';
+import { brandDisplayLabel } from '../brand-label';
 
 // Replaces the old branch dropdown + "..." menu (new branch/github repo) in
 // the navbar and dashboard — see plan/brand.md §9-10. Just the current
@@ -14,7 +15,9 @@ import { useCurrentBrand } from '../brand';
 // nothing to pick anymore since every editor only ever has one brand at a time.
 export function CurrentBrandChip() {
   const brand = useCurrentBrand();
-  const label = brand?.label ?? '';
+  // Display drops the leading date/time (see brandDisplayLabel); the press
+  // handler still copies the full original label.
+  const label = brand ? brandDisplayLabel(brand.label) : '';
 
   return (
     <ActionButton
