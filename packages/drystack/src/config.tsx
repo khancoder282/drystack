@@ -2,8 +2,10 @@ import { ColorScheme } from '@keystar/ui/types';
 import { ReactElement } from 'react';
 
 import { ComponentSchema, SlugFormField } from './form/api';
+import * as fields from './form/fields';
 import type { Locale } from './app/l10n/locales';
 import { RepoConfig } from './app/repo-config';
+import { REDIRECTS_DIR } from './app/redirects';
 
 // Common
 // ----------------------------------------------------------------------------
@@ -54,6 +56,14 @@ type BrandMark = (props: {
   colorScheme: Exclude<ColorScheme, 'auto'>; // we resolve "auto" to "light" or "dark" on the client
 }) => ReactElement;
 export const NAVIGATION_DIVIDER_KEY = '---';
+// Reserved singleton key `config()` always injects for the redirect-on-
+// rename feature (see the definition below and `config()`'s implementation).
+// It's never part of a site's own `Collections`/`Singletons` generics — since
+// it's injected after the fact, a site can't reference it type-safely
+// through those generics, so the key is added to the navigation union
+// directly here instead, letting a site list it in `ui.navigation` if it
+// wants the redirect table visible in the sidebar.
+export const REDIRECTS_SINGLETON_KEY = '__redirects';
 type UserInterface<Collections, Singletons> = {
   brand?: {
     mark?: BrandMark;
@@ -63,6 +73,7 @@ type UserInterface<Collections, Singletons> = {
     | (keyof Collections & string)
     | (keyof Singletons & string)
     | typeof NAVIGATION_DIVIDER_KEY
+    | typeof REDIRECTS_SINGLETON_KEY
   >;
 };
 
@@ -135,6 +146,32 @@ export type Config<
 // Functions
 // ============================================================================
 
+// Injected into every resolved config by `config()` below — never declared by
+// a site's own `drystack.config.ts`. Baking the schema/path in here (rather
+// than asking each site to declare a matching singleton, as earlier drafts of
+// this feature did) means the redirect-on-rename write path
+// (app/updating.tsx) and the Astro build step (packages/astro/src/index.ts)
+// can rely on this shape always existing, exactly as defined — a site can't
+// rename, re-path, or accidentally drop the fields the write path depends on.
+const redirectsSingleton = singleton({
+  label: 'Redirects (301)',
+  path: `${REDIRECTS_DIR}/`,
+  schema: {
+    entries: fields.array(
+      fields.object({
+        from: fields.text({ label: 'Old URL' }),
+        to: fields.text({ label: 'New URL' }),
+        createdAt: fields.text({ label: 'Created' }),
+      }),
+      {
+        label: 'Redirect list',
+        itemLabel: props =>
+          `${props.fields.from.value || '?'} → ${props.fields.to.value || '?'}`,
+      }
+    ),
+  },
+});
+
 export function config<
   Collections extends {
     [key: string]: Collection<Record<string, ComponentSchema>, string>;
@@ -142,8 +179,21 @@ export function config<
   Singletons extends {
     [key: string]: Singleton<Record<string, ComponentSchema>>;
   },
->(config: Config<Collections, Singletons>) {
-  return config;
+>(userConfig: Config<Collections, Singletons>) {
+  return {
+    ...userConfig,
+    singletons: {
+      ...userConfig.singletons,
+      // Wins over a same-named user singleton on the off chance one exists —
+      // the reserved `__` prefix makes that collision unlikely, but if it
+      // happens anyway the redirect feature should keep working rather than
+      // silently breaking.
+      [REDIRECTS_SINGLETON_KEY]: redirectsSingleton,
+    },
+  } as Config<
+    Collections,
+    Singletons & { [REDIRECTS_SINGLETON_KEY]: typeof redirectsSingleton }
+  >;
 }
 
 export function collection<

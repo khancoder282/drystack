@@ -24,7 +24,8 @@ export function useBrand() {
 
 function DrystackLogo() {
   const size = 32;
-  const {accent, neutral} = tokenSchema.color.foreground;
+  const { neutral } = tokenSchema.color.foreground;
+  const accent = "var(--kui-color-background-accent-emphasis)";
   return (
     <svg
       width={size * 5}

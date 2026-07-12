@@ -143,16 +143,18 @@ function SidebarFooter() {
 }
 
 // no brand/deploy in local mode — brand is a github-only concept (plan/brand.md §12)
+// stacked in two rows (not one HStack) so Deploy always has its own line,
+// regardless of how long the brand label gets
 function SidebarGitActions() {
   let config = useConfig();
   if (isLocalConfig(config)) {
     return null;
   }
   return (
-    <HStack gap="regular" paddingY="regular" paddingX="medium">
+    <VStack gap="regular" paddingY="regular" paddingX="medium">
       <CurrentBrandChip />
       <DeployButton />
-    </HStack>
+    </VStack>
   );
 }
 

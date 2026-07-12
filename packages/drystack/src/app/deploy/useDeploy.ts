@@ -195,7 +195,7 @@ export function useDeploy() {
         path => ({ path })
       );
 
-      setState({ kind: 'loading', label: 'Đang tải nội dung thay đổi…' });
+      setState({ kind: 'loading', label: 'Loading changed files…' });
       await Promise.all(
         classification.takeOursAdditions.map(async path => {
           const entry = oursTree.entries.get(path)!;
@@ -212,7 +212,7 @@ export function useDeploy() {
       );
 
       if (classification.conflictEligible.length > 0) {
-        setState({ kind: 'loading', label: 'Đang kiểm tra xung đột…' });
+        setState({ kind: 'loading', label: 'Checking for conflicts…' });
         const conflictFiles: ConflictFileState[] = [];
         for (const path of classification.conflictEligible) {
           const [baseText, oursText, theirsText] = await Promise.all([
@@ -284,7 +284,7 @@ export function useDeploy() {
         return 'done';
       }
 
-      setState({ kind: 'loading', label: 'Đang deploy…' });
+      setState({ kind: 'loading', label: 'Deploying…' });
       const result = await commit({
         input: {
           branch: {
@@ -340,7 +340,7 @@ export function useDeploy() {
       return 'done';
     }
 
-    setState({ kind: 'loading', label: 'Đang tải thay đổi…' });
+    setState({ kind: 'loading', label: 'Preparing deploy…' });
     try {
       for (let attempt = 0; attempt < MAX_STALE_DATA_RETRIES; attempt++) {
         if ((await runOneAttempt()) === 'done') return;

@@ -1,18 +1,20 @@
 // 301 redirect map shared by the CMS write path (updating.tsx) and the build
 // step (packages/astro reads REDIRECTS_FILE_PATH to emit dist/_redirects).
 //
-// The map is stored as a `redirects` singleton so it goes through the same
-// commit/`/update` machinery as any other content — one file, both storage
-// kinds, and a free editing UI in the CMS. The site is expected to declare a
-// singleton at this exact path; the constant below is the single source of
-// truth for where that file lives.
-export const REDIRECTS_FILE_PATH = 'redirects/index.yaml';
+// The map is stored as a singleton (see the `__redirects` entry `config()`
+// injects in ../config.tsx) so it goes through the same commit/`/update`
+// machinery as any other content — one file, both storage kinds, and a free
+// editing UI in the CMS. The singleton is library-owned, not something a
+// site author declares, so this directory name is the single source of
+// truth for where the file lives — `../config.tsx` points the injected
+// singleton's `path` at the same constant, so the two can't drift apart.
+export const REDIRECTS_DIR = 'redirects';
+export const REDIRECTS_FILE_PATH = `${REDIRECTS_DIR}/index.yaml`;
 
 export type RedirectEntry = {
   from: string;
   to: string;
   createdAt?: string;
-  note?: string;
 };
 
 // Public URLs only ever differ here by a trailing slash; normalise so `/blog/a`
@@ -39,12 +41,10 @@ export function parseRedirectEntries(value: unknown): RedirectEntry[] {
     const to = normalizeRedirectPath(String((item as any).to ?? ''));
     if (!from || !to) continue;
     const createdAt = (item as any).createdAt;
-    const note = (item as any).note;
     result.push({
       from,
       to,
       createdAt: createdAt == null ? '' : String(createdAt),
-      note: note == null ? '' : String(note),
     });
   }
   return result;
@@ -64,7 +64,7 @@ export function parseRedirectEntries(value: unknown): RedirectEntry[] {
 // page now living at A.
 export function appendRedirect(
   entries: RedirectEntry[],
-  incoming: { from: string; to: string; createdAt?: string; note?: string }
+  incoming: { from: string; to: string; createdAt?: string }
 ): RedirectEntry[] {
   const from = normalizeRedirectPath(incoming.from);
   const to = normalizeRedirectPath(incoming.to);
@@ -92,7 +92,6 @@ export function appendRedirect(
       from,
       to,
       createdAt: incoming.createdAt ?? new Date().toISOString().slice(0, 10),
-      note: incoming.note ?? '',
     });
   }
 

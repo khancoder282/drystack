@@ -24,9 +24,9 @@ const OVERALL_TIMEOUT_MS = 5 * 60 * 1000;
 // which is an acceptable tradeoff since Cloudflare doesn't expose real
 // sub-step timing to key this off instead.
 const SIMULATED_STEPS: { atMs: number; label: string }[] = [
-  { atMs: 0, label: 'Đang cài đặt dependencies…' },
-  { atMs: 15_000, label: 'Đang build…' },
-  { atMs: 45_000, label: 'Đang deploy…' },
+  { atMs: 0, label: 'Installing dependencies…' },
+  { atMs: 15_000, label: 'Building…' },
+  { atMs: 45_000, label: 'Deploying…' },
 ];
 
 export function watchBuildStatus(

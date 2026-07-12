@@ -445,29 +445,5 @@ export default config({
         lede: fields.text({ label: "Mô tả", multiline: true }),
       },
     }),
-    // Bảng chuyển hướng 301. Drystack tự ghi vào đây khi bạn đổi slug hoặc
-    // xoá một bài đã publish (xem packages/drystack/src/app/redirects.ts).
-    // Lúc build, packages/astro sinh ra dist/_redirects từ file này để
-    // Cloudflare trả 301 thật ở edge. Bạn cũng có thể sửa/xoá thủ công ở đây.
-    redirects: singleton({
-      label: "Chuyển hướng 301",
-      schema: {
-        entries: fields.array(
-          fields.object({
-            from: fields.text({ label: "URL cũ" }),
-            to: fields.text({ label: "URL mới" }),
-            createdAt: fields.text({ label: "Ngày tạo" }),
-            note: fields.text({ label: "Ghi chú" }),
-          }),
-          {
-            label: "Danh sách chuyển hướng",
-            itemLabel: (props) =>
-              `${props.fields.from.value || "?"} → ${
-                props.fields.to.value || "?"
-              }`,
-          },
-        ),
-      },
-    }),
   },
 });
