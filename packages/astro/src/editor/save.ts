@@ -183,6 +183,19 @@ async function buildFileChanges(
   }));
 }
 
+// The branch segment the admin app's routes expect (e.g. "branch/main/") —
+// GitHub mode is branch-scoped, local mode has no branch in its URLs.
+export async function getCurrentBranchName(
+  config: Config<any, any>
+): Promise<string | undefined> {
+  if (config.storage.kind !== 'github') return undefined;
+  const token = getGithubToken();
+  if (!token) throw new Error('Not signed in to GitHub');
+  const { owner, name } = parseRepo((config.storage as any).repo);
+  const branch = await getDefaultBranch(token, owner, name);
+  return branch.branchName;
+}
+
 // Before/after text for every file the pending edits would change — resolves
 // the GitHub default branch first when needed, mirroring the save path.
 export async function getPendingDiffs(

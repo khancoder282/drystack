@@ -21,7 +21,7 @@ import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Heading, Text } from '@keystar/ui/typography';
 import { enableEditing, disableEditing, getOriginalValue } from './bind';
 import { getAllEdits, deleteEdit } from './store';
-import { saveEdits } from './save';
+import { saveEdits, getCurrentBranchName } from './save';
 import { showDeployProgressToast } from '@drystack/core/deploy-progress-toast';
 import { refreshAfterDeploy } from './dom-refresh';
 
@@ -101,8 +101,14 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
     }
   };
 
-  const goToAdmin = (name: string) => {
-    window.location.href = `${adminBase}/singleton/${encodeURIComponent(name)}`;
+  const goToAdmin = async (name: string) => {
+    try {
+      const branch = await getCurrentBranchName(config);
+      const branchSegment = branch ? `branch/${encodeURIComponent(branch)}/` : '';
+      window.location.href = `${adminBase}/${branchSegment}singleton/${encodeURIComponent(name)}`;
+    } catch (err) {
+      toastQueue.critical(err instanceof Error ? err.message : String(err));
+    }
   };
 
   // Highlight (and scroll to) every editable spot belonging to a singleton.
