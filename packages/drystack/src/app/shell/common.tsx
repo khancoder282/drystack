@@ -33,6 +33,7 @@ export function useBrand() {
 function DrystackLogo() {
   let size = 32;
   let accent = tokenSchema.color.foreground.accent;
+  let colorText = tokenSchema.color.foreground.neutral;
   return (
     <svg
       width={size * 5}
@@ -78,8 +79,8 @@ function DrystackLogo() {
         letter-spacing="-0.5"
       >
         <tspan fill={accent}>Dry</tspan>
-        <tspan fill="#f5ece0">Stack</tspan>
-        <tspan fill="#f5ece0" fill-opacity="0.45">
+        <tspan fill={colorText}>Stack</tspan>
+        <tspan fill={colorText} fill-opacity="0.45">
           .dev
         </tspan>
       </text>
