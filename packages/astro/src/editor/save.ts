@@ -45,6 +45,17 @@ export type FileDiff = { path: string; before: string; after: string };
 
 const textDecoder = new TextDecoder();
 
+// Carries GitHub's machine-readable error `type` (e.g. "STALE_DATA",
+// "BRANCH_PROTECTION_RULE_VIOLATION") so callers can react to specific
+// failure modes instead of only having a joined message string.
+class GithubGraphQLError extends Error {
+  type?: string;
+  constructor(message: string, type?: string) {
+    super(message);
+    this.type = type;
+  }
+}
+
 async function githubGraphQL(
   token: string,
   query: string,
@@ -60,7 +71,10 @@ async function githubGraphQL(
   });
   const json = await res.json();
   if (json.errors?.length) {
-    throw new Error(json.errors.map((e: { message: string }) => e.message).join('; '));
+    throw new GithubGraphQLError(
+      json.errors.map((e: { message: string }) => e.message).join('; '),
+      json.errors[0]?.type
+    );
   }
   return json.data;
 }
@@ -133,6 +147,35 @@ async function readCurrentFile(
   );
 }
 
+// Every pending edit must satisfy its own field's schema.validate before it's
+// allowed to reach disk/GitHub — the visual editor writes raw DOM text
+// straight into YAML, so without this a required/min-length/pattern field
+// could be saved empty or malformed. Mirrors the admin form's
+// clientSideValidateProp gate (packages/drystack/src/form/errors.ts), scoped
+// down to flat fields.text values since that's all MVP 1 edits.
+function validateEdits(
+  config: Config<any, any>,
+  bySingleton: Map<string, Map<string, string>>
+): void {
+  const messages: string[] = [];
+  for (const [name, fields] of bySingleton) {
+    const schema = config.singletons![name].schema as Record<
+      string,
+      { validate?: (value: string, args?: unknown) => unknown }
+    >;
+    for (const [field, value] of fields) {
+      try {
+        schema[field]?.validate?.(value, undefined);
+      } catch (err) {
+        messages.push(err instanceof Error ? err.message : `${name}.${field} is invalid`);
+      }
+    }
+  }
+  if (messages.length > 0) {
+    throw new Error(messages.join('; '));
+  }
+}
+
 // Reads each singleton file the pending edits touch and returns its current
 // (before) text alongside the text it would become once edits are applied.
 // Powers both saving (encode `after`) and the review diff dialog.
@@ -149,6 +192,8 @@ async function collectFileDiffs(
     if (!bySingleton.has(name)) bySingleton.set(name, new Map());
     bySingleton.get(name)!.set(field, edit.value);
   }
+
+  validateEdits(config, bySingleton);
 
   const diffs: FileDiff[] = [];
   for (const [name, fields] of bySingleton) {
@@ -259,26 +304,57 @@ export async function saveEdits(config: Config<any, any>): Promise<string | unde
     const token = getGithubToken();
     if (!token) throw new Error('Not signed in to GitHub');
     const { owner, name } = parseRepo((config.storage as any).repo);
-    const branch = await getDefaultBranch(token, owner, name);
-    const files = await buildFileChanges(config, branch.branchName);
+    let branch = await getDefaultBranch(token, owner, name);
+    let files = await buildFileChanges(config, branch.branchName);
     if (files.length === 0) return undefined;
-    const data = await githubGraphQL(token, createCommitMutation, {
-      input: {
-        branch: {
-          branchName: branch.branchName,
-          repositoryNameWithOwner: `${owner}/${name}`,
+
+    const commit = () =>
+      githubGraphQL(token, createCommitMutation, {
+        input: {
+          branch: {
+            branchName: branch.branchName,
+            repositoryNameWithOwner: `${owner}/${name}`,
+          },
+          expectedHeadOid: branch.oid,
+          message: { headline: 'Update content via visual editor' },
+          fileChanges: {
+            additions: files.map(f => ({
+              path: f.path,
+              contents: base64Encode(f.contents),
+            })),
+            deletions: [],
+          },
         },
-        expectedHeadOid: branch.oid,
-        message: { headline: 'Update content via visual editor' },
-        fileChanges: {
-          additions: files.map(f => ({
-            path: f.path,
-            contents: base64Encode(f.contents),
-          })),
-          deletions: [],
-        },
-      },
-    });
+      });
+
+    let data: Awaited<ReturnType<typeof commit>>;
+    try {
+      data = await commit();
+    } catch (err) {
+      if (!(err instanceof GithubGraphQLError)) throw err;
+      if (err.type === 'BRANCH_PROTECTION_RULE_VIOLATION') {
+        throw new Error(
+          `"${branch.branchName}" is a protected branch — changes must go through a pull request. Open the admin panel to create a branch for this edit instead.`
+        );
+      }
+      if (err.type !== 'STALE_DATA') throw err;
+      // Someone else committed to the branch since we read it. Refetch the
+      // branch tip and re-read the files against it (picking up any
+      // unrelated concurrent commit, and re-applying our pending edits on
+      // top) then retry exactly once — a second failure means we're racing
+      // too fast to safely auto-resolve, so surface it instead of retrying
+      // forever.
+      branch = await getDefaultBranch(token, owner, name);
+      files = await buildFileChanges(config, branch.branchName);
+      if (files.length === 0) return undefined;
+      try {
+        data = await commit();
+      } catch {
+        throw new Error(
+          'This content changed on GitHub while you were editing. Reload the page and try saving again.'
+        );
+      }
+    }
     commitOid = data?.createCommitOnBranch?.ref?.target?.oid;
   } else if (config.storage.kind === 'local') {
     const files = await buildFileChanges(config);
