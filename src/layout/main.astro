@@ -1,0 +1,191 @@
+---
+import { getImage } from "astro:assets";
+import "../styles/global.css";
+import FloatingContact from "../components/FloatingContact.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { getHomepage } from "../data/site";
+import { parseHeadingLine } from "../lib/heading";
+import heroImage from "../assets/hero.png";
+
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  image?: string;
+  type?: "website" | "article";
+}
+
+const { seoDefaults, brand, contact } = await getHomepage();
+const defaultOgImage = await getImage({ src: heroImage, width: 1200 });
+
+const {
+  title = seoDefaults.title,
+  description = seoDefaults.description,
+  keywords,
+  image = seoDefaults.ogImage || defaultOgImage.src,
+  type = "website",
+} = Astro.props;
+
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const ogImageUrl = new URL(image, Astro.site);
+const gaId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID;
+const gscVerification = import.meta.env.PUBLIC_GSC_VERIFICATION;
+const bingVerification = import.meta.env.PUBLIC_BING_VERIFICATION;
+
+const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
+  brand.name,
+);
+const siteName = `${brandName}${brandHighlight}`;
+const faviconUrl = brand.favicon || "/favicon.svg";
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteName,
+  url: Astro.site,
+  logo: new URL(faviconUrl, Astro.site).toString(),
+  telephone: contact.phoneDisplay,
+  email: contact.email,
+  areaServed: contact.region,
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteName,
+  url: Astro.site,
+};
+---
+
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href={faviconUrl} />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    {keywords && <meta name="keywords" content={keywords} />}
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="alternate" type="application/rss+xml" title={`${siteName} RSS`} href="/rss.xml" />
+    <title>{title}</title>
+
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    {gscVerification && <meta name="google-site-verification" content={gscVerification} />}
+    {bingVerification && <meta name="msvalidate.01" content={bingVerification} />}
+
+    <JsonLd schema={[organizationSchema, websiteSchema]} />
+
+    {gaId && (
+      <Fragment>
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>
+        <script is:inline define:vars={{ gaId }}>
+          window.dataLayer = window.dataLayer || [];
+          function gtag() { dataLayer.push(arguments); }
+          gtag("js", new Date());
+          gtag("config", gaId);
+        </script>
+      </Fragment>
+    )}
+
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+    <FloatingContact />
+    <script>
+      // Stagger: các phần tử .reveal trong container [data-stagger]
+      // sẽ xuất hiện lần lượt (delay tăng dần), tạo hiệu ứng đổ dây.
+      document
+        .querySelectorAll<HTMLElement>("[data-stagger]")
+        .forEach((group) => {
+          const step = parseFloat(group.dataset.stagger || "90");
+          group
+            .querySelectorAll<HTMLElement>(":scope > .reveal")
+            .forEach((el, i) =>
+              el.style.setProperty(
+                "--reveal-delay",
+                `${Math.min(i, 8) * step}ms`,
+              ),
+            );
+        });
+
+      const revealEls = document.querySelectorAll<HTMLElement>(".reveal");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            // Reveal một chiều: hiện rồi thì thôi quan sát, tránh
+            // hiện tượng nhấp nháy khi phần tử liên tục ra/vào vùng
+            // quan sát lúc cuộn gần mép trên.
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              observer.unobserve(entry.target);
+            }
+          }
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -60px 0px" },
+      );
+      revealEls.forEach((el) => observer.observe(el));
+
+      // Safety net: crawlers and non-scrolling agents never fire the
+      // observer, so force elements already in the initial viewport visible.
+      window.setTimeout(() => {
+        revealEls.forEach((el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < window.innerHeight && rect.bottom > 0)
+            el.classList.add("is-visible");
+        });
+      }, 1200);
+
+      const parallaxEls =
+        document.querySelectorAll<HTMLElement>("[data-parallax]");
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      // Bỏ qua hoàn toàn nếu trang không có phần tử parallax nào, hoặc
+      // người dùng đã bật "giảm chuyển động" - tránh gắn listener scroll thừa.
+      if (parallaxEls.length && !prefersReducedMotion) {
+        let ticking = false;
+
+        const updateParallax = () => {
+          const viewportH = window.innerHeight;
+          parallaxEls.forEach((el) => {
+            const speed = parseFloat(el.dataset.parallax || "0.2");
+            const splitSpeed = parseFloat(el.dataset.parallaxX || "0");
+            const rect = el.getBoundingClientRect();
+            const centerOffset = rect.top + rect.height / 2 - viewportH / 2;
+            const y = centerOffset * speed * -1;
+            const x = splitSpeed ? centerOffset * splitSpeed : 0;
+            el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          });
+          ticking = false;
+        };
+
+        window.addEventListener(
+          "scroll",
+          () => {
+            if (!ticking) {
+              requestAnimationFrame(updateParallax);
+              ticking = true;
+            }
+          },
+          { passive: true },
+        );
+        updateParallax();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+title: "SEO Audit"
+icon: "search"
+price: "Từ 1.500.000đ"
+desc: "Kiểm tra toàn diện kỹ thuật, nội dung và backlink - chỉ rõ điều gì đang cản trở thứ hạng."
+tags:
+  - "Technical"
+  - "Onpage"
+  - "Báo cáo chi tiết"
+hot: false
+intro: "Trước khi tối ưu, bạn cần biết chính xác website đang gặp vấn đề gì. SEO Audit rà soát toàn bộ yếu tố kỹ thuật, nội dung và liên kết để chỉ ra những điểm nghẽn đang cản trở thứ hạng của bạn trên Google."
+benefits:
+  - "Báo cáo chi tiết theo từng hạng mục: kỹ thuật, onpage, offpage"
+  - "Danh sách lỗi ưu tiên theo mức độ ảnh hưởng đến thứ hạng"
+  - "Đề xuất lộ trình khắc phục cụ thể, dễ triển khai"
+process:
+  - step: "Thu thập dữ liệu"
+    desc: "Crawl toàn bộ website, thu thập số liệu từ Search Console, Analytics."
+  - step: "Phân tích"
+    desc: "Đối chiếu với chuẩn SEO hiện hành và đối thủ cùng ngành."
+  - step: "Báo cáo & tư vấn"
+    desc: "Gửi báo cáo chi tiết kèm buổi tư vấn giải thích trực tiếp."

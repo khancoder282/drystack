@@ -1,0 +1,21 @@
+---
+import BlogListing from "../../components/BlogListing.astro";
+import { getSeoKnowledgePosts } from "../../data/blog";
+import { getSeoKnowledgeListingPage } from "../../data/site";
+
+const [posts, page] = await Promise.all([
+  getSeoKnowledgePosts(),
+  getSeoKnowledgeListingPage(),
+]);
+---
+
+<BlogListing
+  posts={posts}
+  basePath="/blog-kien-thuc"
+  metaTitle={page.metaTitle}
+  metaDescription={page.metaDescription}
+  ogImage={page.ogImage || undefined}
+  eyebrow={page.eyebrow}
+  heading={page.heading}
+  lede={page.lede}
+/>

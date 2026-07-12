@@ -1,0 +1,30 @@
+---
+import BlogPostDetail from "../../components/BlogPostDetail.astro";
+import { getBlogPosts } from "../../data/blog";
+
+export async function getStaticPaths() {
+	const posts = await getBlogPosts();
+	return posts.map((p) => ({
+		params: { slug: p.slug },
+	}));
+}
+
+// Fetched fresh by slug (rather than trusting the getStaticPaths props)
+// so edits show up immediately in `astro dev` without a server restart -
+// Astro only recomputes getStaticPaths props once per dev-server lifetime.
+const posts = await getBlogPosts();
+const post = posts.find((p) => p.slug === Astro.params.slug);
+if (!post) {
+	return Astro.redirect("/blog");
+}
+
+const related = posts.filter((p) => p.slug !== post.slug).slice(0, 3);
+---
+
+<BlogPostDetail
+	post={post}
+	related={related}
+	basePath="/blog"
+	eyebrowLabel="Bài viết"
+	backLabel="Tất cả bài viết"
+/>

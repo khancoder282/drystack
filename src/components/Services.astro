@@ -1,0 +1,198 @@
+---
+import Icon from "./Icon.astro";
+import Heading from "./Heading.astro";
+import { getServices } from "../data/services";
+import { getHomepage } from "../data/site";
+
+const services = await getServices();
+const { servicesSection } = await getHomepage();
+---
+
+<section class="services section--dark" id="services">
+  <span class="section-kicker-word kicker-right">{servicesSection.eyebrow}</span>
+
+  <div class="bg-layer">
+    <div
+      class="orb orb--gold"
+      style="width:380px;height:380px;top:-8%;left:-10%;"
+      data-parallax="0.12"
+    >
+    </div>
+  </div>
+
+  <div class="container services__head">
+    <p class="eyebrow reveal">{servicesSection.eyebrow}</p>
+    <h2 class="section-title reveal">
+      <Heading text={servicesSection.heading} />
+    </h2>
+    <p class="section-lede reveal" style="margin: 1rem auto 0;">
+      {servicesSection.lede}
+    </p>
+  </div>
+
+  <div class="container services__grid" data-stagger>
+    {
+      services.map((s) => (
+        <a
+          href={`/dich-vu/${s.slug}`}
+          class:list={["service-card reveal", { "is-hot": s.hot }]}
+        >
+          {s.hot && <span class="badge">HOT</span>}
+          <span class="service-card__icon">
+            <Icon name={s.icon} size={22} />
+          </span>
+          <h3>{s.title}</h3>
+          <p class="service-card__price">{s.price}</p>
+          <p class="service-card__desc">{s.desc}</p>
+          <div class="service-card__tags">
+            {s.tags.map((t) => (
+              <span>{t}</span>
+            ))}
+          </div>
+          <span class="service-card__more">
+            Xem chi tiết <Icon name="arrow-right" size={14} />
+          </span>
+        </a>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .services {
+    padding-block: 6rem;
+  }
+
+  .services__head {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  .services__head .section-title {
+    margin-block: 0.75rem;
+  }
+
+  .services__grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-block: 3.5rem 4rem;
+  }
+
+  .service-card {
+    position: relative;
+    background: var(--surface-card);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: block;
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 20px 45px -20px rgba(212, 175, 55, 0.35);
+  }
+
+  .service-card.is-hot {
+    border-color: rgba(212, 175, 55, 0.55);
+  }
+
+  .badge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: var(--gold-gradient);
+    background-size: 300% auto;
+    color: var(--canvas-deep);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+  }
+
+  .service-card__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--primary-light);
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+  }
+
+  .service-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .service-card__price {
+    color: var(--primary-light);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .service-card__desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .service-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .service-card__tags span {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+  }
+
+  .service-card__more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-light);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition:
+      opacity 0.25s ease,
+      transform 0.25s ease;
+  }
+
+  .service-card:hover .service-card__more {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (max-width: 980px) {
+    .services__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .services__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

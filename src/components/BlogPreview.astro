@@ -1,0 +1,190 @@
+---
+import { Image } from "astro:assets";
+import Icon from "./Icon.astro";
+import Heading from "./Heading.astro";
+import { getBlogPosts, getSeoKnowledgePosts } from "../data/blog";
+import { getBlogListingPage } from "../data/site";
+
+const [blogPosts, seoKnowledgePosts, blogPreview] = await Promise.all([
+  getBlogPosts(),
+  getSeoKnowledgePosts(),
+  getBlogListingPage(),
+]);
+const allPosts = [
+  ...blogPosts.map((p) => ({ ...p, basePath: "/blog" })),
+  ...seoKnowledgePosts.map((p) => ({ ...p, basePath: "/blog-kien-thuc" })),
+];
+const latest = allPosts
+  .sort((a, b) => b.date.localeCompare(a.date))
+  .slice(0, 3);
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+---
+
+<section class="blog-preview section--dark" id="blog">
+  <span class="section-kicker-word kicker-right">{blogPreview.eyebrow}</span>
+
+  <div class="bg-layer">
+    <div
+      class="orb orb--amber"
+      style="width:340px;height:340px;bottom:-12%;right:-8%;"
+      data-parallax="0.1"
+    >
+    </div>
+  </div>
+
+  <div class="container blog-preview__head">
+    <p class="eyebrow reveal">{blogPreview.eyebrow}</p>
+    <h2 class="section-title reveal">
+      <Heading text={blogPreview.heading} />
+    </h2>
+    <p class="section-lede reveal" style="margin: 1rem auto 0;">
+      {blogPreview.lede}
+    </p>
+  </div>
+
+  <div class="container blog-preview__grid" data-stagger>
+    {
+      latest.map((p) => (
+        <a href={`${p.basePath}/${p.slug}`} class="post-card reveal">
+          <div class="post-card__cover">
+            <Image src={p.cover} alt={p.title} loading="lazy" width={800} height={450} />
+          </div>
+          <h3>{p.title}</h3>
+          <p class="post-card__excerpt">{p.excerpt}</p>
+          <div class="post-card__meta">
+            <span>
+              <Icon name="calendar" size={14} /> {formatDate(p.date)}
+            </span>
+            <span class="post-card__more">
+              Đọc tiếp <Icon name="arrow-right" size={14} />
+            </span>
+          </div>
+        </a>
+      ))
+    }
+  </div>
+
+  <div class="container blog-preview__cta reveal">
+    <a href="/blog" class="btn btn-ghost"
+      >Xem tất cả bài viết <Icon name="arrow-right" size={16} /></a
+    >
+  </div>
+</section>
+
+<style>
+  .blog-preview {
+    padding-block: 2rem 6rem;
+  }
+
+  .blog-preview__head {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  .blog-preview__head .section-title {
+    margin-block: 0.75rem;
+  }
+
+  .blog-preview__grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-block: 3.5rem;
+  }
+
+  .post-card {
+    display: block;
+    background: var(--surface-card);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .post-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 20px 45px -20px rgba(212, 175, 55, 0.35);
+  }
+
+  .post-card__cover {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+  }
+
+  .post-card__cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .post-card h3,
+  .post-card__excerpt,
+  .post-card__meta {
+    margin-inline: 1.75rem;
+  }
+
+  .post-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .post-card__excerpt {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .post-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 1.75rem;
+  }
+
+  .post-card__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .post-card__more {
+    color: var(--primary-light);
+    font-weight: 600;
+  }
+
+  .blog-preview__cta {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  @media (max-width: 980px) {
+    .blog-preview__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .blog-preview__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

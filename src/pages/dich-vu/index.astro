@@ -1,0 +1,193 @@
+---
+import Main from "../../layout/main.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import Icon from "../../components/Icon.astro";
+import Heading from "../../components/Heading.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getServices } from "../../data/services";
+import { getDichVuPage } from "../../data/site";
+
+const [services, page] = await Promise.all([getServices(), getDichVuPage()]);
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Trang chủ", item: new URL("/", Astro.site).toString() },
+    { "@type": "ListItem", position: 2, name: "Dịch vụ", item: new URL("/dich-vu", Astro.site).toString() },
+  ],
+};
+---
+
+<Main title={page.metaTitle} description={page.metaDescription} image={page.ogImage || undefined}>
+  <JsonLd schema={breadcrumbSchema} />
+  <Header />
+
+  <section class="page-hero section--dark" id="top">
+    <div class="bg-layer">
+      <div
+        class="orb orb--gold"
+        style="width:380px;height:380px;top:-10%;left:-8%;"
+        data-parallax="0.12"
+      >
+      </div>
+    </div>
+    <div class="container page-hero__inner" data-stagger="120">
+      <p class="eyebrow reveal">{page.eyebrow}</p>
+      <h1 class="section-title reveal">
+        <Heading text={page.heading} />
+      </h1>
+      <p class="section-lede reveal" style="margin: 1rem auto 0;">
+        {page.lede}
+      </p>
+    </div>
+  </section>
+
+  <section class="services-list section--light">
+    <div class="container services-list__grid" data-stagger>
+      {
+        services.map((s) => (
+          <a
+            href={`/dich-vu/${s.slug}`}
+            class:list={["service-card reveal", { "is-hot": s.hot }]}
+          >
+            {s.hot && <span class="badge">HOT</span>}
+            <span class="service-card__icon">
+              <Icon name={s.icon} size={22} />
+            </span>
+            <h3>{s.title}</h3>
+            <p class="service-card__price">{s.price}</p>
+            <p class="service-card__desc">{s.desc}</p>
+            <div class="service-card__tags">
+              {s.tags.map((t) => (
+                <span>{t}</span>
+              ))}
+            </div>
+            <span class="service-card__more">
+              Xem chi tiết <Icon name="arrow-right" size={14} />
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <Footer />
+</Main>
+
+<style>
+  .page-hero {
+    padding-block: 9rem 5rem;
+    text-align: center;
+  }
+
+  .page-hero__inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .services-list {
+    padding-block: 5rem 6rem;
+  }
+
+  .services-list__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .service-card {
+    position: relative;
+    background: var(--surface-light-card);
+    border: 1px solid rgba(161, 127, 32, 0.15);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: block;
+    box-shadow: 0 30px 60px -20px rgba(28, 26, 22, 0.15);
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(161, 127, 32, 0.5);
+  }
+
+  .badge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: var(--gold-gradient);
+    background-size: 300% auto;
+    color: var(--canvas-deep);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+  }
+
+  .service-card__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--secondary);
+    background: rgba(212, 175, 55, 0.12);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+  }
+
+  .service-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .service-card__price {
+    color: var(--secondary);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .service-card__desc {
+    color: var(--text-dark-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .service-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .service-card__tags span {
+    font-size: 0.72rem;
+    color: var(--text-dark-muted);
+    background: rgba(161, 127, 32, 0.08);
+    border: 1px solid rgba(161, 127, 32, 0.15);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+  }
+
+  .service-card__more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--secondary);
+  }
+
+  @media (max-width: 720px) {
+    .services-list__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

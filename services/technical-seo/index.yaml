@@ -1,0 +1,21 @@
+title: "Technical SEO"
+icon: "settings"
+price: "Từ 2.500.000đ"
+desc: "Tối ưu tốc độ, cấu trúc, schema và crawl budget để Google hiểu website nhanh hơn."
+tags:
+  - "Core Web Vitals"
+  - "Schema"
+  - "Sitemap"
+hot: true
+intro: "Website nhanh, sạch cấu trúc và dễ crawl là nền tảng để mọi nỗ lực SEO khác phát huy hiệu quả. Mình tối ưu toàn diện phần kỹ thuật để Google index và xếp hạng nội dung của bạn nhanh hơn."
+benefits:
+  - "Cải thiện Core Web Vitals, tốc độ tải trang"
+  - "Chuẩn hoá schema markup, sitemap, robots.txt"
+  - "Tối ưu crawl budget cho website nhiều trang"
+process:
+  - step: "Kiểm tra hạ tầng"
+    desc: "Đánh giá tốc độ, hosting, cấu trúc URL, index coverage."
+  - step: "Triển khai tối ưu"
+    desc: "Sửa lỗi kỹ thuật, thêm schema, tối ưu Core Web Vitals."
+  - step: "Theo dõi kết quả"
+    desc: "Giám sát Search Console sau khi triển khai để đảm bảo hiệu quả."

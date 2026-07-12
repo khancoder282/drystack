@@ -1,0 +1,18 @@
+---
+import BlogListing from "../../components/BlogListing.astro";
+import { getBlogPosts } from "../../data/blog";
+import { getBlogListingPage } from "../../data/site";
+
+const [posts, page] = await Promise.all([getBlogPosts(), getBlogListingPage()]);
+---
+
+<BlogListing
+  posts={posts}
+  basePath="/blog"
+  metaTitle={page.metaTitle}
+  metaDescription={page.metaDescription}
+  ogImage={page.ogImage || undefined}
+  eyebrow={page.eyebrow}
+  heading={page.heading}
+  lede={page.lede}
+/>

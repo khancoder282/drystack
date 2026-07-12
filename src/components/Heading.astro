@@ -1,0 +1,24 @@
+---
+import { parseHeadingLine } from "../lib/heading";
+
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+
+const lines = text.split("\n").map(parseHeadingLine);
+---
+
+{
+  lines.map((line, i) => (
+    <Fragment>
+      {i > 0 && <br />}
+      {line.before}
+      {line.emphasis !== null && (
+        <span class="gradient-text">{line.emphasis}</span>
+      )}
+      {line.after}
+    </Fragment>
+  ))
+}

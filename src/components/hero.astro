@@ -1,0 +1,464 @@
+---
+import { Image } from "astro:assets";
+import Icon from "./Icon.astro";
+import Heading from "./Heading.astro";
+import { getHomepage, getGioiThieuPage } from "../data/site";
+import { parseHeadingLine } from "../lib/heading";
+import heroImage from "../assets/hero.png";
+
+const [{ brand, hero }, { intro }] = await Promise.all([
+  getHomepage(),
+  getGioiThieuPage(),
+]);
+const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
+  brand.name,
+);
+---
+
+<section class="hero section--dark" id="top">
+  <div class="bg-layer">
+    <div
+      class="orb orb--gold"
+      style="width:420px;height:420px;top:-10%;left:-8%;opacity:.15"
+      data-parallax="0.15"
+    >
+    </div>
+    <div
+      class="orb orb--amber"
+      style="width:360px;height:360px;bottom:-15%;right:-8%;"
+      data-parallax="0.25"
+    >
+    </div>
+    <div
+      class="ring"
+      style="width:600px;height:600px;top:8%;left:50%;transform:translateX(-50%);"
+    >
+    </div>
+    <div
+      class="ring"
+      style="width:820px;height:820px;top:-2%;left:50%;transform:translateX(-50%);animation-direction:reverse;"
+    >
+    </div>
+    <div class="dot" style="top:22%;left:16%;"></div>
+    <div class="dot" style="top:65%;left:12%;animation-delay:1.2s;"></div>
+    <div class="dot" style="top:30%;right:18%;animation-delay:2s;"></div>
+
+    <div
+      class="deco-square"
+      style="width:64px;height:64px;top:18%;left:7%;rotate:14deg;"
+      data-parallax="0.12"
+      data-parallax-x="-0.18"
+    >
+    </div>
+    <div
+      class="deco-square"
+      style="width:44px;height:44px;top:62%;left:11%;rotate:-10deg;animation-delay:2s;"
+      data-parallax="0.2"
+      data-parallax-x="-0.24"
+    >
+    </div>
+    <div
+      class="deco-square"
+      style="width:84px;height:84px;top:14%;right:9%;rotate:-16deg;animation-delay:1s;"
+      data-parallax="0.15"
+      data-parallax-x="0.18"
+    >
+    </div>
+    <div
+      class="deco-square"
+      style="width:52px;height:52px;top:60%;right:13%;rotate:12deg;animation-delay:3s;"
+      data-parallax="0.22"
+      data-parallax-x="0.24"
+    >
+    </div>
+  </div>
+
+  <div class="hero__inner container-fluid">
+    <p class="eyebrow reveal">
+      {hero.eyebrow}
+    </p>
+
+    <h1 class="hero__title reveal">
+      <span class="hero__title-outline">{brandName}</span>
+      <span class="gradient-text">{brandHighlight}</span>
+    </h1>
+
+    <div class="hero__row">
+      <div class="hero__tagline reveal reveal-right">
+        <h2>
+          <Heading text={hero.tagline} />
+        </h2>
+        <p>
+          {hero.description}
+        </p>
+      </div>
+
+      <div class="hero__portrait reveal reveal-no-fade" data-parallax="0.08">
+        <Image
+          src={heroImage}
+          alt={brand.personName}
+          widths={[250, 461]}
+          sizes="(min-width: 615px) 480px, 78vw"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </div>
+
+      <div class="hero__info-card reveal reveal-left">
+        <p class="eyebrow">{brand.personName}</p>
+        <h3>{brand.role}</h3>
+        <div class="hero__info-stats">
+          {
+            intro.stats.map((s) => (
+              <div class="stat">
+                <span class="stat__value gradient-text">{s.value}</span>
+                <span class="stat__label">{s.label}</span>
+              </div>
+            ))
+          }
+        </div>
+        <div class="hairline"></div>
+        <p class="hero__info-status">
+          <Icon name="circle-dot" size={12} />
+          {brand.availabilityStatus}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const hero = document.querySelector<HTMLElement>(".hero");
+  const about = document.querySelector<HTMLElement>(".about");
+  const tagline = document.querySelector<HTMLElement>(".hero__tagline");
+  const title = document.querySelector<HTMLElement>(".hero__title");
+  const infoCard = document.querySelector<HTMLElement>(".hero__info-card");
+
+  // Hiệu ứng sticky-exit chỉ chạy trên desktop; mobile để cuộn thường.
+  const desktop = window.matchMedia("(min-width: 901px)");
+
+  function updateHeroStickyOffset() {
+    if (!hero) return;
+    if (!desktop.matches) {
+      hero.style.top = "";
+      return;
+    }
+    const overflow = hero.offsetHeight - window.innerHeight;
+    hero.style.top = overflow > 0 ? `${-overflow}px` : "-120px";
+  }
+
+  const aboutRestTop = about
+    ? about.getBoundingClientRect().top + window.scrollY
+    : 0;
+
+  function updateExitProgress() {
+    if (!about || !aboutRestTop) return;
+
+    if (!desktop.matches) {
+      // Mobile: bỏ hiệu ứng bay ngang, trả các phần tử về vị trí thường.
+      for (const el of [tagline, title, infoCard])
+        if (el) el.style.transform = "";
+      return;
+    }
+
+    const progress = Math.min(
+      1,
+      Math.max(0, 1 - about.getBoundingClientRect().top / aboutRestTop),
+    );
+
+    if (tagline) tagline.style.transform = `translateX(${progress * 100}vw)`;
+    if (title) title.style.transform = `translateY(${progress * 40}vh)`;
+    if (infoCard) infoCard.style.transform = `translateX(${progress * -100}vw)`;
+  }
+
+  let ticking = false;
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateExitProgress();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  function onResize() {
+    updateHeroStickyOffset();
+    updateExitProgress();
+  }
+
+  updateHeroStickyOffset();
+  updateExitProgress();
+  window.addEventListener("resize", onResize);
+  window.addEventListener("scroll", onScroll, { passive: true });
+</script>
+
+<style>
+  .hero {
+    position: sticky;
+    top: -50px;
+    z-index: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    padding-block: 8rem 4rem;
+    will-change: top;
+  }
+
+  .container-fluid {
+    width: 100%;
+    padding-inline: clamp(1.25rem, 5vw, 4rem);
+  }
+
+  .hero__inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero__title {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    font-size: clamp(4rem, 15vw, 12rem);
+    line-height: 0.95;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.05em;
+  }
+
+  .hero__title-outline {
+    color: #141313;
+    text-shadow:
+      3px 0 0 var(--primary-light),
+      -3px 0 0 var(--primary-light),
+      0 3px 0 var(--primary-light),
+      0 -3px 0 var(--primary-light),
+      3px 3px 0 var(--primary-light),
+      -3px -3px 0 var(--primary-light),
+      3px -3px 0 var(--primary-light),
+      -3px 3px 0 var(--primary-light);
+  }
+
+  @supports not (-webkit-text-stroke: 1px black) {
+    .hero__title-outline {
+      color: var(--text-main);
+    }
+  }
+
+  .hero__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .hero__tagline {
+    position: relative;
+    z-index: 1;
+    max-width: min(420px, 40vw);
+    text-align: left;
+  }
+
+  .hero__info-card {
+    position: relative;
+    z-index: 1;
+    text-align: left;
+  }
+
+  .hero__tagline h2 {
+    width: 150%;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.5rem, 4vw, 3.75rem);
+    line-height: 1.15;
+  }
+
+  .hero__tagline p {
+    margin-top: 1rem;
+    color: var(--text-muted);
+    font-size: 1rem;
+    max-width: 34ch;
+  }
+
+  .hero__info-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: left;
+    width: min(380px, 36vw);
+    aspect-ratio: 16 / 9;
+    background: var(--surface-card);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: var(--radius-lg);
+    padding: 1.35rem 1.6rem;
+    box-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.6);
+  }
+
+  .hero__info-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    margin-block: 0.3rem 0;
+  }
+
+  .hero__info-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+
+  .hero__info-stats .stat {
+    align-items: flex-start;
+  }
+
+  .hero__info-stats .stat__value {
+    font-size: 1.1rem;
+  }
+
+  .hero__info-stats .stat__label {
+    text-align: left;
+    font-size: 0.68rem;
+  }
+
+  .hero__info-card .hairline {
+    margin-block: 0.75rem;
+  }
+
+  .hero__info-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--primary-light);
+    font-weight: 600;
+  }
+
+  .hero__portrait {
+    position: relative;
+    width: min(480px, 78vw);
+    margin: clamp(-8rem, -14vw, -4rem) clamp(-3rem, -6vw, -1.5rem) -2.5rem;
+    z-index: 2;
+  }
+
+  @media (max-width: 900px) {
+    /* Mobile: bỏ sticky + hiệu ứng bay ngang, cuộn thường cho ổn định */
+    .hero {
+      position: static;
+      top: auto;
+      min-height: auto;
+      padding-block: 7rem 3rem;
+    }
+
+    .hero__row {
+      flex-direction: column;
+    }
+
+    .hero__portrait {
+      margin: 0 auto -1.5rem;
+      order: -1;
+    }
+
+    .hero__tagline,
+    .hero__info-card {
+      text-align: center;
+      width: min(480px, 88vw);
+      max-width: min(480px, 88vw);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero__info-card {
+      aspect-ratio: auto;
+    }
+
+    .hero__tagline h2 {
+      max-width: 100%;
+      margin-top: 1rem;
+    }
+
+    .hero__tagline p {
+      margin-inline: auto;
+    }
+
+    .hero__info-stats {
+      justify-items: center;
+    }
+
+    .hero__info-stats .stat,
+    .hero__info-stats .stat__label {
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero__info-status {
+      justify-content: center;
+    }
+  }
+
+  .hero__portrait::after {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    background: radial-gradient(
+      circle,
+      rgba(212, 175, 55, 0.4),
+      transparent 65%
+    );
+    z-index: -1;
+    filter: blur(30px);
+  }
+
+  .hero__portrait img {
+    width: 100%;
+    height: auto;
+    filter: grayscale(0.2) sepia(0.12) contrast(1.08) brightness(0.98)
+      drop-shadow(0 25px 40px rgba(1, 1, 1));
+    -webkit-mask-image: linear-gradient(to bottom, black 68%, transparent 96%);
+    mask-image: linear-gradient(to bottom, black 68%, transparent 96%);
+  }
+
+  @keyframes card-tilt-float {
+    0%,
+    100% {
+      transform: perspective(900px) rotateY(-22deg) rotateX(8deg) scale(1);
+    }
+    50% {
+      transform: perspective(900px) rotateY(-27deg) rotateX(10deg) scale(1.08);
+    }
+  }
+
+  .hero__stats {
+    display: flex;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    margin-top: 3.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .stat__value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .stat__label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>

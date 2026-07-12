@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /drystack
+Disallow: /api/drystack/
+
+Sitemap: https://quangseo.drystack.dev/sitemap-index.xml

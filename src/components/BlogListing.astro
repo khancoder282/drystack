@@ -1,0 +1,325 @@
+---
+import { Image } from "astro:assets";
+import Main from "../layout/main.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Icon from "../components/Icon.astro";
+import Heading from "./Heading.astro";
+import JsonLd from "./JsonLd.astro";
+import type { BlogPost } from "../data/blog";
+
+interface Props {
+  posts: BlogPost[];
+  basePath: string;
+  metaTitle: string;
+  metaDescription: string;
+  ogImage?: string;
+  eyebrow: string;
+  heading: string;
+  lede: string;
+}
+
+const {
+  posts,
+  basePath,
+  metaTitle,
+  metaDescription,
+  ogImage,
+  eyebrow,
+  heading,
+  lede,
+} = Astro.props;
+
+const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Trang chủ", item: new URL("/", Astro.site).toString() },
+    { "@type": "ListItem", position: 2, name: eyebrow, item: new URL(basePath, Astro.site).toString() },
+  ],
+};
+---
+
+<Main title={metaTitle} description={metaDescription} image={ogImage || undefined}>
+  <JsonLd schema={breadcrumbSchema} />
+  <Header />
+
+  <section class="page-hero section--dark" id="top">
+    <div class="bg-layer">
+      <div
+        class="orb orb--gold"
+        style="width:380px;height:380px;top:-10%;right:-8%;"
+        data-parallax="0.12"
+      >
+      </div>
+    </div>
+    <div class="container page-hero__inner" data-stagger="120">
+      <p class="eyebrow reveal">{eyebrow}</p>
+      <h1 class="section-title reveal">
+        <Heading text={heading} />
+      </h1>
+      <p class="section-lede reveal" style="margin: 1rem auto 0;">
+        {lede}
+      </p>
+    </div>
+
+    <div class="blog-search-wrap reveal">
+        <div class="blog-search">
+          <Icon name="search" size={16} />
+          <input
+            type="text"
+            id="blog-search-input"
+            placeholder="Tìm bài viết..."
+            autocomplete="off"
+          />
+        </div>
+      </div>
+  </section>
+
+  <section class="blog-list section--light">
+    <div class="container">
+      
+
+      <p class="blog-empty" id="blog-empty" hidden>
+        Không tìm thấy bài viết phù hợp.
+      </p>
+
+      <div class="blog-list__grid" id="blog-grid" data-stagger>
+        {
+          sorted.map((p) => (
+            <a href={`${basePath}/${p.slug}`} class="blog-card reveal">
+              <div class="blog-card__cover">
+                <Image src={p.cover} alt={p.title} loading="lazy" width={800} height={450} />
+              </div>
+              <h3>{p.title}</h3>
+              <p class="blog-card__excerpt">{p.excerpt}</p>
+              <div class="blog-card__meta">
+                <span>
+                  <Icon name="calendar" size={14} /> {formatDate(p.date)}
+                </span>
+                <span class="blog-card__more">
+                  Đọc tiếp <Icon name="arrow-right" size={14} />
+                </span>
+              </div>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Main>
+
+<script>
+  const searchInput =
+    document.querySelector<HTMLInputElement>("#blog-search-input");
+  const cards = document.querySelectorAll<HTMLAnchorElement>(
+    "#blog-grid .blog-card",
+  );
+  const emptyState = document.querySelector<HTMLElement>("#blog-empty");
+
+  // Lấy nội dung tìm kiếm trực tiếp từ text đang hiển thị của thẻ (innerText),
+  // cache 1 lần - tránh nhúng data-search cồng kềnh vào HTML làm nặng file.
+  const searchText = new WeakMap<HTMLElement, string>();
+  cards.forEach((card) => searchText.set(card, card.innerText.toLowerCase()));
+
+  // force=true (khi người dùng tìm) ép thẻ khớp hiện ngay để không kẹt
+  // ở opacity:0. Lần chạy đầu (force=false) để IntersectionObserver tự reveal
+  // theo cuộn - nếu không, thẻ dưới màn hình sẽ hiện sẵn và mất hiệu ứng.
+  function applyFilters(force = false) {
+    const query = (searchInput?.value || "").trim().toLowerCase();
+    let visibleCount = 0;
+
+    cards.forEach((card) => {
+      const visible = !query || (searchText.get(card) || "").includes(query);
+
+      // Ẩn hẳn thẻ không khớp bằng display:none (không dùng [hidden] vì
+      // .blog-card có display:block ghi đè).
+      card.style.display = visible ? "" : "none";
+      if (force) card.classList.toggle("is-visible", visible);
+      else if (!visible) card.classList.remove("is-visible");
+      // Gán lại delay stagger theo thứ tự các thẻ đang hiển thị.
+      if (visible) {
+        card.style.setProperty(
+          "--reveal-delay",
+          `${Math.min(visibleCount, 8) * 90}ms`,
+        );
+        visibleCount++;
+      }
+    });
+
+    if (emptyState) emptyState.hidden = visibleCount !== 0;
+  }
+
+  // Debounce để tránh lọc lại (và reflow stagger) trên từng ký tự gõ.
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => applyFilters(true), 250);
+  });
+
+  applyFilters();
+</script>
+
+<style>
+  .page-hero {
+    padding-block: 9rem 5rem;
+    text-align: center;
+  }
+
+  .page-hero__inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .blog-list {
+    padding-block: 5rem 6rem;
+  }
+
+  /* Straddle điểm nối giữa hero tối và section sáng - cùng kỹ thuật
+     margin-top âm dùng cho .post-cover ở trang chi tiết bài viết. */
+  .blog-search-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+    margin-bottom: -2rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .blog-search {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--surface-light-card);
+    border: 1px solid rgba(161, 127, 32, 0.2);
+    border-radius: 999px;
+    padding: 0.85rem 1.5rem;
+    color: var(--text-dark-muted);
+    width: min(420px, 100%);
+    box-shadow: 0 20px 45px -20px rgba(28, 26, 22, 0.4);
+  }
+
+  .blog-search :global(.icon) {
+    flex-shrink: 0;
+    color: var(--secondary);
+  }
+
+  .blog-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    color: var(--text-dark);
+  }
+
+  .blog-empty {
+    text-align: center;
+    color: var(--text-dark-muted);
+    padding-block: 3rem;
+  }
+
+  .blog-list__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .blog-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-light-card);
+    border: 1px solid rgba(161, 127, 32, 0.15);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 30px 60px -20px rgba(28, 26, 22, 0.15);
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease;
+  }
+
+  .blog-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(161, 127, 32, 0.5);
+  }
+
+  .blog-card__cover {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+  }
+
+  .blog-card__cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .blog-card h3,
+  .blog-card__excerpt,
+  .blog-card__meta {
+    margin-inline: 1.75rem;
+  }
+
+  .blog-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    margin-top: 1.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .blog-card__excerpt {
+    color: var(--text-dark-muted);
+    font-size: 0.92rem;
+    margin-bottom: 1.5rem;
+    flex: 1
+  }
+
+  .blog-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-dark-muted);
+    margin-bottom: 1.75rem;
+  }
+
+  .blog-card__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .blog-card__more {
+    color: var(--secondary);
+    font-weight: 600;
+  }
+
+  @media (max-width: 980px) {
+    .blog-list__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .blog-list__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .blog-search-wrap {
+      margin-top: -1.5rem;
+    }
+  }
+</style>

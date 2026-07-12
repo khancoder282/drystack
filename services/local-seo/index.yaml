@@ -1,0 +1,21 @@
+title: "Local SEO"
+icon: "map-pin"
+price: "Từ 2.000.000đ"
+desc: "Phủ sóng bản đồ và tìm kiếm địa phương cho cửa hàng, dịch vụ khu vực."
+tags:
+  - "Google Maps"
+  - "Review"
+  - "NAP"
+hot: false
+intro: "Với doanh nghiệp có địa điểm vật lý, xuất hiện trên Google Maps và tìm kiếm local là kênh khách hàng gần như miễn phí. Mình tối ưu hồ sơ doanh nghiệp và tín hiệu địa phương để bạn nổi bật đúng khu vực."
+benefits:
+  - "Tối ưu Google Business Profile chuẩn NAP"
+  - "Xây dựng chiến lược thu thập review chất lượng"
+  - "Tăng độ phủ trên bản đồ và tìm kiếm 'gần tôi'"
+process:
+  - step: "Kiểm tra hồ sơ"
+    desc: "Đánh giá Google Business Profile và tín hiệu local hiện tại."
+  - step: "Tối ưu & xây dựng"
+    desc: "Chuẩn hoá NAP, danh mục, ảnh, bài đăng."
+  - step: "Thu thập & theo dõi"
+    desc: "Triển khai chiến lược review, theo dõi thứ hạng local."

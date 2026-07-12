@@ -1,0 +1,98 @@
+brand:
+  name: Quang[SEO]
+  personName: Nguyễn Phương Quang
+  role: SEO Marketing
+  availabilityStatus: Đang nhận dự án mới
+seoDefaults:
+  title: Nguyễn Phương Quang | SEO Marketing
+  description: >-
+    Nguyễn Phương Quang - chuyên gia SEO Marketing. Đưa thương hiệu của bạn lên
+    top tìm kiếm bằng chiến lược SEO bền vững.
+contact:
+  email: quang.seo@gmail.com
+  phoneDisplay: 090 123 4567
+  zaloPhone: '0866442503'
+  region: Toàn quốc · Remote
+socialLinks:
+  - platform: facebook
+    href: '#'
+  - platform: x
+    href: '#'
+  - platform: tiktok
+    href: '#'
+  - platform: zalo
+    href: '#'
+headerNav:
+  - label: Trang chủ
+    href: /
+  - label: Giới thiệu
+    href: /gioi-thieu
+  - label: Dịch vụ
+    href: /dich-vu
+  - label: Kiến thức SEO
+    href: /blog-kien-thuc
+  - label: Bài viết
+    href: /blog
+footerNav:
+  - label: Trang chủ
+    href: /
+  - label: Giới thiệu
+    href: /gioi-thieu
+  - label: Dịch vụ
+    href: /dich-vu
+  - label: Bài viết
+    href: /blog
+  - label: Liên hệ
+    href: /#contact
+hero:
+  eyebrow: Nguyễn Phương Quang · Search Engine Optimization
+  tagline: |-
+    Bứt phá thứ hạng.
+    Chiếm lĩnh [top tìm kiếm].
+  description: >-
+    Tối ưu kỹ thuật, nội dung và trải nghiệm người dùng để Google xếp hạng
+    thương hiệu của bạn đúng vị trí xứng đáng.
+about:
+  eyebrow: Giới thiệu
+  cardEyebrow: Về Quang
+  heading: SEO không phải phép màu là [chiến lược đúng]
+  points:
+    - Chiến lược SEO cá nhân hoá, không rập khuôn
+    - Báo cáo minh bạch, số liệu thật mỗi tuần
+    - Đồng hành dài hạn, không chỉ chạy dự án
+servicesSection:
+  eyebrow: Dịch vụ
+  heading: Quang [làm được gì] cho bạn?
+  lede: >-
+    Từ kiểm tra kỹ thuật đến nội dung và local SEO - mọi thứ website cần để được
+    tìm thấy.
+techTools:
+  eyebrow: Công nghệ
+  heading: Công cụ [chuẩn quốc tế]
+  points:
+    - icon: shield-check
+      text: Theo dõi & giám sát website bằng Search Console, GA4
+    - icon: zap
+      text: Đo tốc độ, Core Web Vitals bằng PageSpeed Insights
+    - icon: trending-up
+      text: Phân tích đối thủ & từ khoá với Ahrefs, SEMrush
+  tools:
+    - icon: /images/tools/techTools/tools/0/icon.svg
+    - icon: /images/tools/techTools/tools/1/icon.svg
+    - icon: /images/tools/techTools/tools/2/icon.svg
+    - icon: /images/tools/techTools/tools/3/icon.svg
+    - icon: /images/tools/techTools/tools/4/icon.svg
+    - icon: /images/tools/techTools/tools/5/icon.svg
+    - icon: /images/tools/techTools/tools/6/icon.svg
+    - icon: /images/tools/techTools/tools/7/icon.svg
+    - icon: /images/tools/techTools/tools/8/icon.svg
+    - icon: /images/tools/techTools/tools/9/icon.svg
+contactSection:
+  eyebrow: Liên hệ
+  heading: Sẵn sàng [lên top]?
+  lede: >-
+    Để lại thông tin, Quang sẽ phản hồi trong 24h với gợi ý chiến lược SEO phù
+    hợp cho website của bạn.
+footer:
+  description: Nội dung đã được chỉnh sửa
+  copyright: © 2026 Nguyễn Phương Quang. Đưa thương hiệu lên top, bền vững.

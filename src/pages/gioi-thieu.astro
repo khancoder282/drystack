@@ -1,0 +1,356 @@
+---
+import { Image } from "astro:assets";
+import Main from "../layout/main.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Icon from "../components/Icon.astro";
+import Heading from "../components/Heading.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { getGioiThieuPage, getHomepage } from "../data/site";
+import { parseHeadingLine } from "../lib/heading";
+import heroImage from "../assets/hero.png";
+
+const [
+  { metaTitle, metaDescription, ogImage, hero, intro, values, timeline },
+  { brand },
+] = await Promise.all([getGioiThieuPage(), getHomepage()]);
+const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
+  brand.name,
+);
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Trang chủ", item: new URL("/", Astro.site).toString() },
+    { "@type": "ListItem", position: 2, name: "Giới thiệu", item: new URL("/gioi-thieu", Astro.site).toString() },
+  ],
+};
+---
+
+<Main title={metaTitle} description={metaDescription} image={ogImage || undefined}>
+  <JsonLd schema={breadcrumbSchema} />
+  <Header />
+
+  <section class="about-hero section--dark" id="top">
+    <div class="bg-layer">
+      <div
+        class="orb orb--gold"
+        style="width:380px;height:380px;top:-10%;left:-8%;"
+        data-parallax="0.12"
+      >
+      </div>
+    </div>
+    <div class="container about-hero__inner" data-stagger="120">
+      <p class="eyebrow reveal">{hero.eyebrow}</p>
+      <h1 class="section-title reveal">
+        <Heading text={hero.heading} />
+      </h1>
+      <p class="section-lede reveal" style="margin-top: 1rem; max-width: 60ch;">
+        {hero.lede}
+      </p>
+    </div>
+  </section>
+
+  <section class="about-intro section--light">
+    <span class="section-kicker-word kicker-left">{intro.eyebrow}</span>
+    <div class="container about-intro__inner" data-stagger="160">
+      <div class="about-intro__portrait reveal reveal-left">
+        <span class="dot" style="top:6%;right:4%;"></span>
+        <span class="dot" style="bottom:26%;left:-3%;animation-delay:1.4s;"
+        ></span>
+        <div
+          class="deco-square"
+          style="width:58px;height:58px;top:-5%;left:6%;"
+        >
+        </div>
+        <div
+          class="deco-square"
+          style="width:38px;height:38px;bottom:14%;right:-4%;animation-delay:2s;"
+        >
+        </div>
+        <div class="portrait-frame">
+          <Image
+            src={heroImage}
+            alt={brand.personName}
+            width={461}
+            height={541}
+          />
+          <span class="portrait-badge">{brandName}<em>{brandHighlight}</em></span>
+        </div>
+      </div>
+      <div class="about-intro__content reveal reveal-right">
+        <p class="eyebrow">{intro.eyebrow}</p>
+        <h2 class="section-title">
+          <Heading text={intro.heading} />
+        </h2>
+        <p class="section-lede" style="margin-top: 1rem;">
+          {intro.lede}
+        </p>
+        <div class="about-intro__stats">
+          {
+            intro.stats.map((s) => (
+              <div class="stat">
+                <span class="stat__value gradient-text">{s.value}</span>
+                <span class="stat__label">{s.label}</span>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-values section--dark">
+    <div class="container" data-stagger="120">
+      <p class="eyebrow reveal">{values.eyebrow}</p>
+      <h2 class="section-title reveal" style="margin-block: 0.75rem 3rem;">
+        <Heading text={values.heading} />
+      </h2>
+      <div class="about-values__grid" data-stagger>
+        {
+          values.items.map((v) => (
+            <div class="value-card reveal">
+              <span class="value-card__icon">
+                <Icon name={v.icon as any} size={22} />
+              </span>
+              <h3>{v.title}</h3>
+              <p>{v.desc}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="about-timeline section--light">
+    <div class="container" data-stagger="120">
+      <p class="eyebrow reveal">{timeline.eyebrow}</p>
+      <h2 class="section-title reveal" style="margin-block: 0.75rem 3rem;">
+        <Heading text={timeline.heading} />
+      </h2>
+      <div class="timeline" data-stagger>
+        {
+          timeline.items.map((t, i) => (
+            <div
+              class:list={[
+                "timeline-item reveal",
+                i % 2 === 0 ? "reveal-left" : "reveal-right",
+              ]}
+            >
+              <span class="timeline-item__year">{t.year}</span>
+              <p>{t.desc}</p>
+            </div>
+          ))
+        }
+      </div>
+      <a href="/#contact" class="btn btn-primary" style="margin-top: 3rem;">
+        Liên hệ hợp tác <Icon name="arrow-right" size={16} />
+      </a>
+    </div>
+  </section>
+
+  <Footer />
+</Main>
+
+<style>
+  .about-hero {
+    padding-block: 9rem 5rem;
+  }
+
+  .about-hero__inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .about-intro {
+    position: relative;
+    overflow: hidden;
+    padding-block: 5rem;
+  }
+
+  .about-intro__inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: center;
+  }
+
+  .about-intro__portrait {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 420px);
+    margin-inline: auto;
+  }
+
+  /* Quầng sáng vàng phía sau ảnh cho nổi khối */
+  .about-intro__portrait::before {
+    content: "";
+    position: absolute;
+    inset: -14% -10% -4%;
+    background: radial-gradient(
+      circle at 50% 42%,
+      rgba(212, 175, 55, 0.3),
+      transparent 62%
+    );
+    filter: blur(30px);
+    z-index: -1;
+  }
+
+  .portrait-frame {
+    position: relative;
+  }
+
+  .portrait-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-lg);
+    filter: grayscale(0.15) sepia(0.1) contrast(1.05);
+    /* Đáy ảnh mờ dần hoà vào nền - giống hiệu ứng ở trang chủ */
+    -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 99%);
+    mask-image: linear-gradient(to bottom, #000 70%, transparent 99%);
+  }
+
+  /* Nhãn thương hiệu đè lên góc dưới bên phải của ảnh */
+  .portrait-badge {
+    position: absolute;
+    right: -0.85rem;
+    bottom: 2.4rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 0.01em;
+    color: #fff;
+    background: rgba(20, 18, 14, 0.82);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    padding: 0.5rem 1.05rem;
+    border-radius: 999px;
+    box-shadow: 0 18px 34px -14px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+  }
+
+  .portrait-badge em {
+    font-style: normal;
+    color: var(--primary-light);
+  }
+
+  .about-intro__stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .stat__value {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  .stat__label {
+    font-size: 0.8rem;
+    color: var(--text-dark-muted);
+  }
+
+  .about-values {
+    padding-block: 6rem;
+  }
+
+  .about-values__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .value-card {
+    background: var(--surface-card);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+  }
+
+  .value-card__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--primary-light);
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+  }
+
+  .value-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .value-card p {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .about-timeline {
+    padding-block: 6rem;
+  }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .timeline-item {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(161, 127, 32, 0.15);
+  }
+
+  .timeline-item__year {
+    flex-shrink: 0;
+    width: 70px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--secondary);
+    font-size: 1.25rem;
+  }
+
+  .timeline-item p {
+    color: var(--text-dark-muted);
+  }
+
+  @media (max-width: 860px) {
+    .about-intro__inner {
+      grid-template-columns: 1fr;
+    }
+
+    .about-values__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .about-intro__stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .about-values__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
