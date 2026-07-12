@@ -137,12 +137,27 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
     await refreshCount();
   };
 
+  // Open the admin home in a new tab. Synchronous (fired straight from the
+  // click) so the browser doesn't treat it as a blocked popup.
+  const openAdminHome = () => {
+    window.open(adminBase, '_blank', 'noopener,noreferrer');
+  };
+
+  // Deep-link to a singleton's admin editor in a new tab. github mode needs an
+  // async branch lookup, so open the tab up front — preserving the click's user
+  // activation — and point it at the URL once resolved; a window.open() issued
+  // after the await would be killed by the popup blocker.
   const goToAdmin = async (name: string) => {
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
     try {
       const branch = await getCurrentBranchName(config);
       const branchSegment = branch ? `branch/${encodeURIComponent(branch)}/` : '';
-      window.location.href = `${adminBase}/${branchSegment}singleton/${encodeURIComponent(name)}`;
+      const url = `${adminBase}/${branchSegment}singleton/${encodeURIComponent(name)}`;
+      if (tab) tab.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
+      tab?.close();
       toastQueue.critical(err instanceof Error ? err.message : String(err));
     }
   };
@@ -224,7 +239,7 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
             >
               <ActionButton
                 aria-label="Open in drystack admin"
-                isDisabled={singletonList.length === 0}
+                onPress={openAdminHome}
                 UNSAFE_className="dry-iconbtn"
               >
                 <Icon src={externalLinkIcon} />

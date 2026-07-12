@@ -23,9 +23,6 @@ import { ThemeProvider, useTheme } from './shell/theme';
 import { parseRepoConfig } from './repo-config';
 import { useRouter } from './router';
 
-// NOTE: scroll behaviour is handled by shell components
-injectGlobal({ body: { overflow: 'hidden' } });
-
 export function createUrqlClient(config: Config, basePath: string): Client {
   const repo =
     config.storage.kind === 'github'
@@ -173,6 +170,14 @@ export default function Provider({
   children: JSX.Element;
   config: Config;
 }) {
+  // The admin shell fills the viewport and manages its own internal scrolling,
+  // so lock body scroll. This MUST be scoped to the component (not a module-load
+  // side effect): the Astro visual editor bundle transitively imports this
+  // module on public pages, and a top-level injectGlobal would lock scroll on
+  // the live site even though this Provider never mounts there. emotion dedupes
+  // the insertion, so calling it during render is cheap and applies before paint.
+  injectGlobal({ body: { overflow: 'hidden' } });
+
   const themeContext = useTheme();
   const { push: navigate, basePath } = useRouter();
   const keystarRouter = useMemo(() => ({ navigate }), [navigate]);
