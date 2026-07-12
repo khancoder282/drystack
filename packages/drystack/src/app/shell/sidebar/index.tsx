@@ -91,7 +91,7 @@ export function SidebarPanel() {
 function SidebarHeader() {
   let config = useConfig();
   let isLocal = isLocalConfig(config);
-  let { brandMark, brandName } = useBrand();
+  let { brandMark } = useBrand();
 
   return (
     <HStack
@@ -116,10 +116,6 @@ function SidebarHeader() {
         })}
       >
         {brandMark}
-
-        <Text color="inherit" weight="medium" truncate>
-          {brandName}
-        </Text>
       </HStack>
       {isLocal && <ThemeMenu />}
     </HStack>
