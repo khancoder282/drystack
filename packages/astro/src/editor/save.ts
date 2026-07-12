@@ -246,11 +246,15 @@ export async function getPendingDiffs(
   return collectFileDiffs(config);
 }
 
-// Returns the new commit's oid in github mode (so the caller can track that
-// commit's Cloudflare build), or undefined when there was nothing to commit
-// or when in local mode (no build to track).
+// Returns the new commit's oid in github mode, or undefined when there was
+// nothing to commit or when in local mode. Either way, the source of truth
+// (git blob via the GitHub Contents API, or the local file) reflects the
+// write immediately — the caller re-fetches it via getLatestFieldValues right
+// after, so pending edits are cleared here without waiting for a Cloudflare
+// deploy to actually ship the change to the public site.
 export async function saveEdits(config: Config<any, any>): Promise<string | undefined> {
   const isGithub = config.storage.kind === 'github';
+  let commitOid: string | undefined;
   if (isGithub) {
     const token = getGithubToken();
     if (!token) throw new Error('Not signed in to GitHub');
@@ -275,15 +279,7 @@ export async function saveEdits(config: Config<any, any>): Promise<string | unde
         },
       },
     });
-    const commitOid: string | undefined =
-      data?.createCommitOnBranch?.ref?.target?.oid;
-    // GitHub mode: keep the edits in IndexedDB. The commit still needs to land
-    // in a Cloudflare build before it's visible, so clearing here would let a
-    // reload show a stale DOM in the gap between commit and deploy.
-    // discardEditsIfBuildIsNewer (bind.ts) clears them once that build ships,
-    // and the deploy-status websocket (deploy-status.ts) clears them as soon
-    // as the matching build succeeds without waiting for a reload.
-    return commitOid;
+    commitOid = data?.createCommitOnBranch?.ref?.target?.oid;
   } else if (config.storage.kind === 'local') {
     const files = await buildFileChanges(config);
     if (files.length === 0) return;
@@ -304,8 +300,6 @@ export async function saveEdits(config: Config<any, any>): Promise<string | unde
       `dry(): MVP 1 does not support storage.kind "${(config.storage as any).kind}"`
     );
   }
-  // Local mode writes straight to disk — visible immediately, no build to
-  // track, so the edit log can be cleared right away.
   await clearEdits();
-  return undefined;
+  return commitOid;
 }

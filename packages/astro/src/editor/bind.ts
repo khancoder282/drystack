@@ -138,6 +138,18 @@ export async function refreshFromLatestSource(
   );
 }
 
+// Discards every pending edit: restores each on-page field to its captured
+// baseline (kept accurate by refreshFromLatestSource/applyPendingEdits) and
+// clears the IndexedDB edit log — no network fetch needed.
+export async function resetPendingEdits(): Promise<void> {
+  document.querySelectorAll<HTMLElement>('[data-dry]').forEach(el => {
+    const key = el.getAttribute('data-dry');
+    const original = key ? getOriginalValue(key) : undefined;
+    if (original !== undefined) el.textContent = original;
+  });
+  await clearEdits();
+}
+
 // Applies edits saved in IndexedDB on top of the server-rendered DOM — runs
 // on every page load (even before Edit mode is turned on) so an unsaved edit
 // survives a reload, per plan.md's "chưa lưu thì reload phải lấy IndexDB".

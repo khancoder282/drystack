@@ -14,19 +14,45 @@ import { eyeIcon } from '@keystar/ui/icon/icons/eyeIcon';
 import { externalLinkIcon } from '@keystar/ui/icon/icons/externalLinkIcon';
 import { chevronRightIcon } from '@keystar/ui/icon/icons/chevronRightIcon';
 import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
+import { rotateCcwIcon } from '@keystar/ui/icon/icons/rotateCcwIcon';
 import { HStack } from '@keystar/ui/layout';
 import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Heading, Text } from '@keystar/ui/typography';
-import { enableEditing, disableEditing, getOriginalValue, refreshFromLatestSource } from './bind';
+import {
+  enableEditing,
+  disableEditing,
+  getOriginalValue,
+  refreshFromLatestSource,
+  resetPendingEdits,
+} from './bind';
 import { getAllEdits, deleteEdit } from './store';
 import { saveEdits, getCurrentBranchName } from './save';
-import { showDeployProgressToast } from '@drystack/core/deploy-progress-toast';
-import { refreshAfterDeploy } from './dom-refresh';
 
 type Spot = { key: string; name: string; field: string };
 type FieldChange = Spot & { before: string; after: string };
+
+// The single source of truth for "what's actually pending" — reads
+// IndexedDB via getAllEdits() and drops any entry whose value happens to
+// equal its captured original (e.g. typed then reverted by hand). Shared by
+// the toolbar's badge/Save-Reset-enabled state and the review dialog's list
+// so the two can never disagree about whether there's anything to review.
+async function getPendingChanges(): Promise<FieldChange[]> {
+  const edits = await getAllEdits();
+  return edits
+    .map(e => {
+      const [, name, field] = e.key.split('::');
+      return {
+        key: e.key,
+        name,
+        field,
+        before: getOriginalValue(e.key) ?? '',
+        after: e.value,
+      };
+    })
+    .filter(c => c.before !== c.after);
+}
 
 const adminBase = `/${String(apiPath).replace(/^\/+|\/+$/g, '')}`;
 
@@ -64,7 +90,7 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   const [refPos, setRefPos] = useState({ left: 0, bottom: 0 });
 
   const refreshCount = async () => {
-    setPendingCount((await getAllEdits()).length);
+    setPendingCount((await getPendingChanges()).length);
   };
 
   useEffect(() => {
@@ -88,21 +114,24 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
 
   const onSave = async () => {
     setSaving(true);
-    const editedKeys = (await getAllEdits()).map(e => e.key);
     try {
-      const commitOid = await saveEdits(config);
+      await saveEdits(config);
+      // The write (commit or local disk) reflects the true source
+      // immediately — re-sync the DOM from it rather than waiting for a
+      // Cloudflare deploy to actually ship the change to the public site.
+      await refreshFromLatestSource(config);
       await refreshCount();
-      if (!commitOid) {
-        // Local mode, or nothing to commit — already live, nothing to track.
-        toastQueue.positive('Changes saved', { timeout: 4000 });
-        return;
-      }
-      trackDeploy(commitOid, editedKeys, refreshCount);
+      toastQueue.positive('Changes saved', { timeout: 4000 });
     } catch (err) {
       toastQueue.critical(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
+  };
+
+  const onReset = async () => {
+    await resetPendingEdits();
+    await refreshCount();
   };
 
   const goToAdmin = async (name: string) => {
@@ -219,6 +248,18 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
             </TooltipTrigger>
 
             <TooltipTrigger>
+              <ActionButton
+                aria-label="Reset changes"
+                onPress={onReset}
+                isDisabled={nothingToSave || saving}
+                UNSAFE_className="dry-iconbtn"
+              >
+                <Icon src={rotateCcwIcon} />
+              </ActionButton>
+              <Tooltip>Reset changes</Tooltip>
+            </TooltipTrigger>
+
+            <TooltipTrigger>
               <Button
                 aria-label="Save changes"
                 prominence="high"
@@ -268,55 +309,14 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   );
 }
 
-// Opens a single persistent toast tracking the Cloudflare build for
-// `commitOid`, then reacts to the outcome: on success, morphs the page to the
-// freshly deployed HTML (dom-refresh.ts) instead of a hard reload; on
-// failure/cancel/timeout, leaves the edits in IndexedDB (nothing shipped) and
-// reports the outcome as a separate short-lived toast.
-function trackDeploy(
-  commitOid: string,
-  editedKeys: string[],
-  onSettledRefresh: () => void
-) {
-  showDeployProgressToast(commitOid, async outcome => {
-    if (outcome === 'succeeded') {
-      await refreshAfterDeploy(editedKeys);
-      onSettledRefresh();
-      toastQueue.positive('Đã cập nhật trang mới nhất', { timeout: 4000 });
-    } else if (outcome === 'failed' || outcome === 'canceled') {
-      toastQueue.critical(
-        'Build thất bại — các thay đổi vẫn được giữ lại, thử lưu lại sau.',
-        { timeout: 8000 }
-      );
-    } else {
-      toastQueue.info(
-        'Build đang lâu hơn bình thường — tải lại trang để kiểm tra.',
-        { timeout: 8000 }
-      );
-    }
-  });
-}
-
 function ReviewDialog({ onChange }: { onChange: () => void }) {
   const { dismiss } = useDialogContainer();
   const [changes, setChanges] = useState<FieldChange[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getAllEdits().then(edits => {
+    getPendingChanges().then(list => {
       if (cancelled) return;
-      const list = edits
-        .map(e => {
-          const [, name, field] = e.key.split('::');
-          return {
-            key: e.key,
-            name,
-            field,
-            before: getOriginalValue(e.key) ?? '',
-            after: e.value,
-          };
-        })
-        .filter(c => c.before !== c.after);
       setChanges(list);
     });
     return () => {
