@@ -111,12 +111,6 @@ export function makeGenericAPIRouteHandler(
       return handler(req, params);
     };
   }
-  if (_config2.config.storage.kind === 'cloud') {
-    return async function keystaticAPIRoute(): Promise<KeystaticResponse> {
-      return { status: 404, body: 'Not Found' };
-    };
-  }
-
   if (!_config2.clientId || !_config2.clientSecret || !_config2.secret) {
     if (process.env.NODE_ENV !== 'development') {
       const missingKeys = (

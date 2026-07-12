@@ -23,9 +23,6 @@ export function useBrand() {
   if ('repo' in config.storage) {
     brandName = serializeRepoConfig(config.storage.repo);
   }
-  if (config.cloud) {
-    brandName = config.cloud.project;
-  }
   if (config.ui?.brand?.name) {
     brandName = config.ui.brand.name;
   }

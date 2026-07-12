@@ -78,7 +78,7 @@ export function useFileManagerUpload() {
       setIsUploading(true);
       try {
         if (additions.length === 0) return undefined;
-        if (config.storage.kind === 'github' || config.storage.kind === 'cloud') {
+        if (config.storage.kind === 'github') {
           const unscopedTree =
             unscopedTreeData.kind === 'loaded'
               ? unscopedTreeData.data.tree
@@ -104,7 +104,7 @@ export function useFileManagerUpload() {
           }
           if (result.kind === 'error') throw result.error;
           const tree = await hydrateTreeCacheWithEntries(updatedTree.entries);
-          // No setTreeSha in github/cloud mode: there's no SetTreeShaContext
+          // No setTreeSha in github mode: there's no SetTreeShaContext
           // provider there so it would throw (which previously left the New
           // Folder dialog stuck open). The tree refreshes from the commit
           // result via urql's normalized cache, same as useUpsertItem's save.

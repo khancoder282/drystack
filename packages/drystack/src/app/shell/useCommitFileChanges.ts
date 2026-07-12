@@ -25,9 +25,9 @@ export const createCommitMutation = gql`
   }
 ` as import('../../__generated__/ts-gql/CreateCommit').type;
 
-// Shared "commit straight to GitHub" primitive for storage kinds
-// 'github'/'cloud', used by file-manager write actions (upload, trash,
-// restore, permanent delete) — mirrors the mutation call in updating.tsx's
+// Shared "commit straight to GitHub" primitive for 'github' storage, used by
+// file-manager write actions (upload, trash, restore, permanent delete) —
+// mirrors the mutation call in updating.tsx's
 // useUpsertItem/useDeleteItem, but without their entry-save-specific
 // STALE_DATA/BRANCH_PROTECTION_RULE_VIOLATION retry handling, since these
 // file operations aren't retriable in the same way.

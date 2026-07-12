@@ -60,9 +60,9 @@ async function postUpdate(
 // Trash/restore are emulated as a single call that both writes the bytes at
 // the new location (`additions`) and removes the old path (`deletions`) —
 // there's no dedicated move/rename endpoint. Local storage does this via the
-// `/update` REST route; github/cloud storage commits the same change
-// straight to the branch via `useCommitFileChanges`, mirroring how uploads
-// commit (see useFileManagerUpload.ts).
+// `/update` REST route; github storage commits the same change straight to
+// the branch via `useCommitFileChanges`, mirroring how uploads commit (see
+// useFileManagerUpload.ts).
 export function useTrash() {
   const config = useConfig();
   const baseCommit = useBaseCommit();
@@ -71,8 +71,7 @@ export function useTrash() {
   const tree = useTree().current;
   const unscopedTreeData = useCurrentUnscopedTree();
   const commitFileChanges = useCommitFileChanges();
-  const isGitHub =
-    config.storage.kind === 'github' || config.storage.kind === 'cloud';
+  const isGitHub = config.storage.kind === 'github';
 
   const commitToGitHub = useCallback(
     async (
@@ -101,7 +100,7 @@ export function useTrash() {
       }
       if (result.kind === 'error') throw result.error;
       const hydrated = await hydrateTreeCacheWithEntries(updatedTree.entries);
-      // No setTreeSha in github/cloud mode: there's no SetTreeShaContext
+      // No setTreeSha in github mode: there's no SetTreeShaContext
       // provider there so it would throw. The tree refreshes from the commit
       // result via urql's normalized cache, same as useUpsertItem's save path.
       return hydrated;

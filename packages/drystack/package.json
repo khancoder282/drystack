@@ -22,7 +22,6 @@
     "./reader": "./src/reader/index.ts",
     "./reader/github": "./src/reader/github.ts",
     "./content-components": "./src/content-components.ts",
-    "./component-blocks": "./src/component-blocks/index.tsx",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -142,7 +141,6 @@
       "reader/github.ts",
       "renderer.tsx",
       "ui.tsx",
-      "component-blocks/index.tsx",
       "content-components.ts"
     ]
   },
@@ -188,12 +186,6 @@
       "worker": "./src/component-blocks/primitives/blank-for-react-server.tsx",
       "react-server": "./src/component-blocks/primitives/blank-for-react-server.tsx",
       "default": "./src/component-blocks/primitives/index.tsx"
-    },
-    "#cloud-image-preview": {
-      "node": "./src/component-blocks/blank-for-react-server.tsx",
-      "worker": "./src/component-blocks/blank-for-react-server.tsx",
-      "react-server": "./src/component-blocks/blank-for-react-server.tsx",
-      "default": "./src/component-blocks/cloud-image-preview.tsx"
     },
     "#markdoc": "./src/markdoc.js",
     "#base64": "./src/base64.ts",

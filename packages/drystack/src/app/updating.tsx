@@ -228,10 +228,7 @@ export function useUpsertItem(args: {
           deletions: [...filesToDelete],
         });
         await hydrateTreeCacheWithEntries(updatedTree.entries);
-        if (
-          args.config.storage.kind === 'github' ||
-          args.config.storage.kind === 'cloud'
-        ) {
+        if (args.config.storage.kind === 'github') {
           if (!repoInfo) {
             throw new Error('Repo info not loaded');
           }
@@ -440,7 +437,7 @@ export function useDeleteItem(args: {
           deletions,
         });
         await hydrateTreeCacheWithEntries(updatedTree.entries);
-        if (args.storage.kind === 'github' || args.storage.kind === 'cloud') {
+        if (args.storage.kind === 'github') {
           if (!repoInfo) {
             throw new Error('Repo info not loaded');
           }

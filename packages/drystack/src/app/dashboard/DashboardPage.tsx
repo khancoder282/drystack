@@ -2,14 +2,12 @@ import { useLocalizedStringFormatter } from '@react-aria/i18n';
 
 import { Avatar } from '@keystar/ui/avatar';
 import { Flex, VStack } from '@keystar/ui/layout';
-import { TextLink } from '@keystar/ui/link';
 import { tokenSchema } from '@keystar/ui/style';
 import { Heading } from '@keystar/ui/typography';
 
 import { Config } from '../../config';
 
 import l10nMessages from '../l10n';
-import { useCloudInfo } from '../shell/data';
 import { PageBody, PageHeader, PageRoot } from '../shell/page';
 import { useViewer } from '../shell/viewer-data';
 
@@ -20,11 +18,10 @@ import { isLocalConfig } from '../utils';
 export function DashboardPage(props: { config: Config; basePath: string }) {
   const stringFormatter = useLocalizedStringFormatter(l10nMessages);
   const viewer = useViewer();
-  const cloudInfo = useCloudInfo();
 
   const user = viewer
     ? { name: viewer.name ?? viewer.login, avatarUrl: viewer.avatarUrl }
-    : cloudInfo?.user;
+    : undefined;
 
   return (
     <PageRoot containerWidth="large">
@@ -35,7 +32,7 @@ export function DashboardPage(props: { config: Config; basePath: string }) {
       </PageHeader>
       <PageBody isScrollable>
         <Flex direction="column" gap="xxlarge">
-          {user && <UserInfo user={user} manageAccount={!!cloudInfo} />}
+          {user && <UserInfo user={user} />}
 
           {!isLocalConfig(props.config) && <BranchSection />}
           <DashboardCards />
@@ -45,13 +42,7 @@ export function DashboardPage(props: { config: Config; basePath: string }) {
   );
 }
 
-function UserInfo({
-  user,
-  manageAccount,
-}: {
-  user: { avatarUrl?: string; name: string };
-  manageAccount: boolean;
-}) {
+function UserInfo({ user }: { user: { avatarUrl?: string; name: string } }) {
   return (
     <Flex alignItems="center" gap="medium" isHidden={{ below: 'tablet' }}>
       <Avatar src={user.avatarUrl} name={user.name} size="large" />
@@ -65,11 +56,6 @@ function UserInfo({
         >
           Hello, {user.name}!
         </Heading>
-        {manageAccount && (
-          <TextLink href="https://keystatic.cloud/account">
-            Manage Account
-          </TextLink>
-        )}
       </VStack>
     </Flex>
   );

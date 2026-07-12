@@ -45,7 +45,7 @@ export function useMediaLibraryUpload() {
       existingPaths: ReadonlySet<string>
     ): Promise<string> => {
       const path = uniquePath(directory, filename, existingPaths);
-      if (config.storage.kind === 'github' || config.storage.kind === 'cloud') {
+      if (config.storage.kind === 'github') {
         const unscopedTree =
           unscopedTreeData.kind === 'loaded' ? unscopedTreeData.data.tree : undefined;
         if (!unscopedTree) throw new Error('Tree not loaded');

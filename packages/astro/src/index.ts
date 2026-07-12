@@ -41,7 +41,7 @@ async function handleLocalApiRequest(
   ]);
   const config = configMod.default;
   if (config?.storage?.kind !== 'local') {
-    // Let the workerd-run route handle GitHub/cloud modes.
+    // Let the workerd-run route handle GitHub mode.
     return next();
   }
 

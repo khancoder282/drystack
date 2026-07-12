@@ -6,7 +6,6 @@ export {
   ToolbarSeparator,
 } from '#component-block-primitives';
 export type {
-  CloudConfig,
   Collection,
   Config,
   EntryLayout,
