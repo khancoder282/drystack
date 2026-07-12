@@ -35,8 +35,8 @@ import { CreateBranchDuringUpdateDialog } from './ItemPage';
 import { PageBody, PageHeader, PageRoot } from './shell/page';
 import { useBaseCommit, useCurrentBranch, useRepoInfo } from './shell/data';
 import { useHasChanged } from './useHasChanged';
-import { parseEntry, useItemData } from './useItemData';
-import { serializeEntryToFiles, useUpsertItem } from './updating';
+import { useItemData } from './useItemData';
+import { useUpsertItem } from './updating';
 import { Icon } from '@keystar/ui/icon';
 import { ForkRepoDialog } from './fork-repo';
 import {
@@ -45,8 +45,12 @@ import {
   containerWidthForEntryLayout,
 } from './entry-form';
 import { notFound } from './not-found';
-import { delDraft, getDraft, setDraft } from './persistence';
-import * as s from 'superstruct';
+import {
+  deleteSingletonDraft,
+  getSingletonDraft,
+  onSingletonDraftChanged,
+  setSingletonDraft,
+} from './singleton-draft';
 import { LOADING, useData } from './useData';
 import { ActionGroup, Item } from '@keystar/ui/action-group';
 import { useMediaQuery, breakpointQueries } from '@keystar/ui/style';
@@ -393,35 +397,59 @@ function LocalSingletonPage(
     isCreating;
 
   useEffect(() => {
-    const key = ['singleton', singleton] as const;
     if (hasChanged) {
-      const serialized = serializeEntryToFiles({
-        basePath: singletonPath,
-        format: getSingletonFormat(config, singleton),
-        schema: singletonConfig.schema,
-        slug: undefined,
-        state,
-      });
-      const files = new Map(serialized.map(x => [x.path, x.contents]));
-      const data: s.Infer<typeof storedValSchema> = {
-        beforeTreeKey: localTreeKey,
-        files,
-        savedAt: new Date(),
-        version: 1,
-      };
-      setDraft(key, data);
+      setSingletonDraft(singleton, state, localTreeKey);
     } else {
-      delDraft(key);
+      deleteSingletonDraft(singleton);
     }
-  }, [
-    config,
-    localTreeKey,
-    state,
-    hasChanged,
-    singleton,
-    singletonPath,
-    singletonConfig,
-  ]);
+  }, [localTreeKey, state, hasChanged, singleton]);
+
+  // Realtime sync: pick up edits made elsewhere for this singleton — the
+  // on-page visual editor, or this same singleton open in another tab.
+  // Only merges a field the user hasn't already changed locally (compared
+  // against the entry's initial value), so an in-progress local edit is
+  // never silently clobbered; a field changed in both places instead gets
+  // a toast offering to overwrite with the newer value.
+  useEffect(() => {
+    return onSingletonDraftChanged(changedSingleton => {
+      if (changedSingleton !== singleton) return;
+      getSingletonDraft(singleton).then(latest => {
+        if (!latest) return;
+        const base =
+          initialState === null ? getInitialPropsValue(schema) : initialState;
+        let conflicted = false;
+        setState(current => {
+          let next: Record<string, unknown> | undefined;
+          for (const [field, value] of Object.entries(latest.state)) {
+            if (current.state[field] === value) continue;
+            const changedLocally =
+              current.state[field] !== (base as Record<string, unknown>)[field];
+            if (changedLocally) {
+              conflicted = true;
+              continue;
+            }
+            next = next ?? { ...current.state };
+            next[field] = value;
+          }
+          return next
+            ? { localTreeKey: current.localTreeKey, state: next }
+            : current;
+        });
+        if (conflicted) {
+          toastQueue.info('Nội dung đã được sửa ở nơi khác.', {
+            actionLabel: 'Tải bản mới',
+            onAction: () => {
+              setState(current => ({
+                localTreeKey: current.localTreeKey,
+                state: { ...current.state, ...latest.state },
+              }));
+            },
+            timeout: 8000,
+          });
+        }
+      });
+    });
+  }, [singleton, initialState, schema]);
 
   const onPreviewPropsChange = useCallback(
     (cb: (state: Record<string, unknown>) => Record<string, unknown>) => {
@@ -531,13 +559,6 @@ function CollabSingletonPage(
   );
 }
 
-const storedValSchema = s.type({
-  version: s.literal(1),
-  savedAt: s.date(),
-  beforeTreeKey: s.optional(s.string()),
-  files: s.map(s.string(), s.instance(Uint8Array)),
-});
-
 function SingletonPageWrapper(props: { singleton: string; config: Config }) {
   const singletonConfig = props.config.singletons?.[props.singleton];
   if (!singletonConfig) notFound();
@@ -556,25 +577,10 @@ function SingletonPageWrapper(props: { singleton: string; config: Config }) {
   const dirpath = getSingletonPath(props.config, props.singleton);
 
   const draftData = useData(
-    useCallback(async () => {
-      const raw = await getDraft(['singleton', props.singleton]);
-      if (!raw) throw new Error('No draft found');
-      const stored = storedValSchema.create(raw);
-      const parsed = parseEntry(
-        {
-          dirpath,
-          format,
-          schema: singletonConfig.schema,
-          slug: undefined,
-        },
-        stored.files
-      );
-      return {
-        state: parsed.initialState,
-        savedAt: stored.savedAt,
-        treeKey: stored.beforeTreeKey,
-      };
-    }, [dirpath, format, props.singleton, singletonConfig.schema])
+    useCallback(
+      () => getSingletonDraft(props.singleton),
+      [props.singleton]
+    )
   );
 
   const itemData = useItemData({

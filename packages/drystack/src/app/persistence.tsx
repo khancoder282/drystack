@@ -71,14 +71,15 @@ function getStore() {
   return store;
 }
 
+// Singleton drafts live in ./singleton-draft.ts instead (shared with the
+// astro package's visual editor).
 type Key =
   | readonly [kind: 'collection', collection: string, slug: string]
   | readonly [
       kind: 'collection-create',
       collection: string,
       duplicateSlug?: string,
-    ]
-  | readonly [kind: 'singleton', singleton: string];
+    ];
 
 // the as anys are because the indexeddb types dont't accept readonly arrays
 

@@ -16,6 +16,7 @@
     "./renderer": "./src/renderer.tsx",
     "./path-utils": "./src/app/path-utils.ts",
     "./required-files": "./src/app/required-files.ts",
+    "./singleton-draft": "./src/app/singleton-draft.ts",
     "./build-status": "./src/app/build-status.ts",
     "./deploy-progress-toast": "./src/app/DeployProgressToast.tsx",
     "./yaml": "./src/yaml.ts",

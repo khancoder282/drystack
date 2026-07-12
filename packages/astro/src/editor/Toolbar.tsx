@@ -19,11 +19,12 @@ import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
 import { Heading, Text } from '@keystar/ui/typography';
-import { enableEditing, disableEditing, getOriginalValue } from './bind';
+import { enableEditing, disableEditing, getOriginalValue, applyPendingEdits } from './bind';
 import { getAllEdits, deleteEdit } from './store';
 import { saveEdits, getCurrentBranchName } from './save';
 import { showDeployProgressToast } from '@drystack/core/deploy-progress-toast';
 import { refreshAfterDeploy } from './dom-refresh';
+import { onSingletonDraftChanged } from '@drystack/core/singleton-draft';
 
 type Spot = { key: string; name: string; field: string };
 type FieldChange = Spot & { before: string; after: string };
@@ -64,13 +65,29 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   const [refPos, setRefPos] = useState({ left: 0, bottom: 0 });
 
   const refreshCount = async () => {
-    setPendingCount((await getAllEdits()).length);
+    const edits = await getAllEdits();
+    // A singleton's draft can carry fields nobody actually changed here (e.g.
+    // the admin form saved a draft touching a different field on the same
+    // singleton) — only count ones that actually differ from what's on disk,
+    // same test the review dialog already uses.
+    const pending = edits.filter(e => (getOriginalValue(e.key) ?? '') !== e.value);
+    setPendingCount(pending.length);
   };
 
   useEffect(() => {
     refreshCount();
     setSpots(readSpots());
   }, []);
+
+  // Realtime sync: a singleton's draft can also change from elsewhere (the
+  // admin form, or this same page open in another tab). When that happens
+  // for a singleton rendered on this page, repaint it and refresh the count.
+  useEffect(() => {
+    return onSingletonDraftChanged(name => {
+      if (!spots.some(s => s.name === name)) return;
+      applyPendingEdits().then(refreshCount);
+    });
+  }, [spots]);
 
   const toggleEdit = () => {
     if (editing) {
