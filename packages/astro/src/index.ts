@@ -2,7 +2,9 @@ import type { AstroIntegration } from 'astro';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RunnableDevEnvironment, ViteDevServer } from 'vite';
 import { createRunnableDevEnvironment } from 'vite';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readdirSync, cpSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 
 // A dedicated Node-runnable Vite environment for the local-storage API. The
 // Cloudflare adapter turns the default `ssr` environment into a non-runnable
@@ -96,6 +98,51 @@ async function handleLocalApiRequest(
   else res.end(Buffer.from(responseBody as Uint8Array));
 }
 
+// Top-level project directories that never hold drystack-managed content
+// assets, so the asset-copy scan skips them (`src/assets/` in particular is
+// Astro's own ESM asset dir handled by `astro:assets`, not the media library).
+const ASSET_COPY_EXCLUDE = new Set([
+  'node_modules',
+  'dist',
+  'public',
+  'src',
+  'packages',
+]);
+
+// drystack's media library only ever writes into directories literally named
+// `assets` — the shared root `assets/` and each entry's co-located
+// `<collection>/<slug>/assets/`. Astro's static build copies `public/` into the
+// client output but knows nothing about these dirs, so every CMS-managed image
+// 404s once deployed. This mirrors those `assets/` dirs into the client output,
+// preserving their repo-relative path, so the `/…/assets/<file>` URLs stored in
+// image fields resolve in production. Works for both storage kinds: the files
+// are on disk at build time (local mode: the dev disk; github mode: the repo
+// checkout Cloudflare builds from). `.deleted` trash dirs are skipped so files
+// the user removed via the File Manager don't get republished.
+function copyDrystackAssets(root: string, clientDir: string) {
+  const found: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const abs = join(dir, entry.name);
+      if (entry.name === 'assets') found.push(abs);
+      else walk(abs);
+    }
+  };
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    if (ASSET_COPY_EXCLUDE.has(entry.name)) continue;
+    const abs = join(root, entry.name);
+    if (entry.name === 'assets') found.push(abs);
+    else walk(abs);
+  }
+  for (const abs of found) {
+    const dest = join(clientDir, relative(root, abs));
+    mkdirSync(dest, { recursive: true });
+    cpSync(abs, dest, { recursive: true });
+  }
+}
+
 export default function drystack(options?: { path?: string }): AstroIntegration {
   const path = (options?.path ?? 'drystack').replace(/^\/+|\/+$/g, '');
   // Captured once per build/dev-server start. Cloudflare Pages runs a fresh
@@ -103,9 +150,22 @@ export default function drystack(options?: { path?: string }): AstroIntegration 
   // across deploys — the client compares it against the version it last saw
   // to detect "a newer build was published" and discard stale IndexedDB edits.
   const buildVersion = Date.now();
+  // Captured in `astro:config:done` (final resolved paths) and consumed in
+  // `astro:build:done` to mirror drystack `assets/` dirs into the client output.
+  let projectRoot: string | undefined;
+  let clientOutDir: string | undefined;
   return {
     name: 'drystack',
     hooks: {
+      'astro:config:done': ({ config }) => {
+        projectRoot = fileURLToPath(config.root);
+        clientOutDir = fileURLToPath(config.build.client);
+      },
+      'astro:build:done': () => {
+        if (projectRoot && clientOutDir) {
+          copyDrystackAssets(projectRoot, clientOutDir);
+        }
+      },
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, config }) => {
         updateConfig({
           server: config.server.host ? {} : { host: '127.0.0.1' },

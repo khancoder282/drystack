@@ -77,16 +77,16 @@ techTools:
     - icon: trending-up
       text: Phân tích đối thủ & từ khoá với Ahrefs, SEMrush
   tools:
-    - icon: /images/tools/techTools/tools/0/icon.svg
-    - icon: /images/tools/techTools/tools/1/icon.svg
-    - icon: /images/tools/techTools/tools/2/icon.svg
-    - icon: /images/tools/techTools/tools/3/icon.svg
-    - icon: /images/tools/techTools/tools/4/icon.svg
-    - icon: /images/tools/techTools/tools/5/icon.svg
-    - icon: /images/tools/techTools/tools/6/icon.svg
-    - icon: /images/tools/techTools/tools/7/icon.svg
-    - icon: /images/tools/techTools/tools/8/icon.svg
-    - icon: /images/tools/techTools/tools/9/icon.svg
+    - icon: /homepage/assets/tools/0.svg
+    - icon: /homepage/assets/tools/1.svg
+    - icon: /homepage/assets/tools/2.svg
+    - icon: /homepage/assets/tools/3.svg
+    - icon: /homepage/assets/tools/4.svg
+    - icon: /homepage/assets/tools/5.svg
+    - icon: /homepage/assets/tools/6.svg
+    - icon: /homepage/assets/tools/7.svg
+    - icon: /homepage/assets/tools/8.svg
+    - icon: /homepage/assets/tools/9.svg
 contactSection:
   eyebrow: Liên hệ
   heading: Sẵn sàng [lên top]?
@@ -94,5 +94,5 @@ contactSection:
     Để lại thông tin, Quang sẽ phản hồi trong 24h với gợi ý chiến lược SEO phù
     hợp cho website của bạn.
 footer:
-  description: Nội dung đã được chỉnh sửa
+  description: hello mấy con vợ
   copyright: © 2026 Nguyễn Phương Quang. Đưa thương hiệu lên top, bền vững.

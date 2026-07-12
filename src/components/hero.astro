@@ -7,8 +7,8 @@ import { parseHeadingLine } from "../lib/heading";
 import heroImage from "../assets/hero.png";
 
 const [{ brand, hero }, { intro }] = await Promise.all([
-  getHomepage(),
-  getGioiThieuPage(),
+  getHomepage() as any,
+  getGioiThieuPage() as any,
 ]);
 const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
   brand.name,
@@ -97,7 +97,7 @@ const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
         <Image
           src={heroImage}
           alt={brand.personName}
-          widths={[250, 461]}
+          widths={[461, 541]}
           sizes="(min-width: 615px) 480px, 78vw"
           loading="eager"
           fetchpriority="high"
@@ -109,7 +109,7 @@ const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
         <h3>{brand.role}</h3>
         <div class="hero__info-stats">
           {
-            intro.stats.map((s) => (
+            (intro.stats as any[]).map((s) => (
               <div class="stat">
                 <span class="stat__value gradient-text">{s.value}</span>
                 <span class="stat__label">{s.label}</span>

@@ -20,11 +20,21 @@ body.editing [data-dry]:hover {
   scroll-margin: 80px;
 }
 
+/* The editor's mount node (ROOT_ID in index.tsx), a direct child of <body>.
+   KeystarProvider wraps everything below it in a div with `isolation: isolate`,
+   which opens a stacking context — so a z-index on .dry-bar only competes with
+   its siblings *inside* that wrapper, never with the host page's sections
+   (which are `position: relative; z-index: 1..60`). The z-index has to live
+   here, on the outermost element, to actually lift the whole editor tree. */
+#drystack-editor-root {
+  position: relative;
+  z-index: 2147483000;
+}
+
 .dry-bar {
   position: fixed;
   left: 16px;
   bottom: 16px;
-  z-index: 2147483000;
   display: flex;
   align-items: center;
   gap: 12px;
