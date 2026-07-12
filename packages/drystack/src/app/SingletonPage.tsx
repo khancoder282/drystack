@@ -48,6 +48,7 @@ import { notFound } from './not-found';
 import { delDraft, getDraft, setDraft } from './persistence';
 import {
   editKey,
+  getAllEdits,
   isSyncableTextField,
   parseEditKey,
   publishDelete,
@@ -449,6 +450,34 @@ function LocalSingletonPage(
       }
     }
   }
+
+  // Catch up on mount: a field can already have a pending edit sitting in
+  // the shared IndexedDB store — e.g. typed in the visual editor, or in an
+  // admin tab that's since been closed — before this tab ever subscribed to
+  // the bus, so a live-only subscription would never see it. Apply whatever
+  // is already there once, the same way the visual editor's
+  // applyPendingEdits() does for the DOM on load.
+  useEffect(() => {
+    let cancelled = false;
+    getAllEdits().then(edits => {
+      if (cancelled) return;
+      const updates: Record<string, string> = {};
+      for (const edit of edits) {
+        const { type, name, field } = parseEditKey(edit.key);
+        if (type !== 'singleton' || name !== singleton) continue;
+        if (!isSyncableTextField(singletonConfig.schema[field])) continue;
+        if (lastSyncedRef.current![field] === edit.value) continue;
+        updates[field] = edit.value;
+        lastSyncedRef.current![field] = edit.value;
+      }
+      if (Object.keys(updates).length > 0) {
+        onPreviewPropsChange(s => ({ ...s, ...updates }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [singleton, singletonConfig.schema, onPreviewPropsChange]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
