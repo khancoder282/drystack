@@ -1,3 +1,6 @@
+---
+status: success
+---
 # Kế hoạch: Binding / đồng bộ dữ liệu edit (cross-tab + admin ↔ visual editor)
 
 ## 1. Mục tiêu (giữ nguyên ý gốc)
