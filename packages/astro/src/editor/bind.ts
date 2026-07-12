@@ -105,11 +105,6 @@ export async function applyPendingEdits(): Promise<number> {
       `[data-dry="${CSS.escape(edit.key)}"]`
     );
     els.forEach(el => {
-      // Skip the element the visitor is actively typing into — this also
-      // runs on repaint after a draft change made elsewhere (another tab's
-      // admin form), and overwriting textContent mid-keystroke would reset
-      // the caret and clobber whatever they just typed.
-      if (el === document.activeElement) return;
       // Capture the on-disk value before overwriting it with the pending edit.
       rememberOriginal(edit.key, el.textContent ?? '');
       el.textContent = edit.value;
