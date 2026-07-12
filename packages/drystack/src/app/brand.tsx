@@ -242,7 +242,7 @@ export function useBrandGuard(config: Config): void {
     if (startedRef.current === currentBranch) return;
 
     const branchInfo = branches.get(currentBranch);
-    if (branchInfo) {
+    if (branchInfo && currentBranch !== repoInfo.defaultBranch) {
       // the URL's branch is a real ref — adopt it into context, reusing the
       // stored record if it matches, otherwise reconstructing a best-effort
       // one (base = today's default branch HEAD; see plan/brand.md §16).
@@ -266,22 +266,39 @@ export function useBrandGuard(config: Config): void {
       return;
     }
 
-    // the URL's branch doesn't exist. If context already holds a different,
-    // still-valid brand (e.g. the user hit "back" after Deploy rotated us to
-    // a new one), just redirect there instead of creating a needless extra
-    // branch — only fall through to creating a fresh one if we truly have
-    // nothing valid to fall back on.
-    if (record && branches.has(record.ref)) {
+    // the URL's branch doesn't exist, or is the default branch itself — a
+    // brand is always a personal branch, so `main` (or whatever the default
+    // branch is called) must never be adopted as one (plan/brand.md §1/§5).
+    // If context already holds a different, still-valid brand (e.g. the user
+    // hit "back" after Deploy rotated us to a new one, or opened `/branch/main`
+    // in a tab that already has a brand), just redirect there instead of
+    // creating a needless extra branch — only fall through to creating a
+    // fresh one if we truly have nothing valid to fall back on.
+    if (record && record.ref !== repoInfo.defaultBranch && branches.has(record.ref)) {
       startedRef.current = currentBranch;
       push(`${basePath}/branch/${encodeURIComponent(record.ref)}`);
       return;
     }
 
-    // recreate a fresh brand off the current default branch HEAD and redirect to it.
     const defaultBranchInfo = branches.get(repoInfo.defaultBranch);
     if (!defaultBranchInfo) return; // default branch itself not loaded yet
     startedRef.current = currentBranch;
     (async () => {
+      // in-memory context can be empty on a fresh tab (e.g. landing straight
+      // on `/branch/main`) even though IndexedDB already has a valid brand
+      // for this repo — reuse it instead of creating a redundant one.
+      const existing = await readBrandRecord(githubConfig);
+      if (
+        existing &&
+        existing.ref !== repoInfo.defaultBranch &&
+        branches.has(existing.ref)
+      ) {
+        setRecord(existing);
+        push(`${basePath}/branch/${encodeURIComponent(existing.ref)}`);
+        return;
+      }
+
+      // recreate a fresh brand off the current default branch HEAD and redirect to it.
       const newRecord = await createBrand(githubConfig, {
         createBranch,
         repositoryId: repoInfo.id,
