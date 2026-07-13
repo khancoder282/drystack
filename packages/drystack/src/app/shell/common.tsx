@@ -22,7 +22,7 @@ export function useBrand() {
   return { brandMark };
 }
 
-function DrystackLogo() {
+function DrystackLogo({full = true}: {full: boolean}) {
   const size = 32;
   const { neutral } = tokenSchema.color.foreground;
   const accent = "var(--kui-color-background-accent-emphasis)";
@@ -62,7 +62,7 @@ function DrystackLogo() {
           opacity=".4"
         />
       </svg>
-      <text
+      {full && <text
         x="42"
         y="22"
         font-family="'Segoe UI', system-ui, sans-serif"
@@ -75,7 +75,7 @@ function DrystackLogo() {
         <tspan fill={neutral} fill-opacity="0.45">
           .dev
         </tspan>
-      </text>
+      </text>}
     </svg>
   );
 }
