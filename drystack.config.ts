@@ -1,4 +1,10 @@
-import { config, fields, collection, singleton } from "@drystack/core";
+import {
+  config,
+  fields,
+  collection,
+  singleton,
+  REDIRECTS_SINGLETON_KEY,
+} from "@drystack/core";
 
 const techIconOptions = [
   { label: "Search", value: "search" },
@@ -445,5 +451,5 @@ export default config({
         lede: fields.text({ label: "Mô tả", multiline: true }),
       },
     }),
-  },
+  }
 });

@@ -184,10 +184,6 @@ export function config<
     ...userConfig,
     singletons: {
       ...userConfig.singletons,
-      // Wins over a same-named user singleton on the off chance one exists —
-      // the reserved `__` prefix makes that collision unlikely, but if it
-      // happens anyway the redirect feature should keep working rather than
-      // silently breaking.
       [REDIRECTS_SINGLETON_KEY]: redirectsSingleton,
     },
   } as Config<

@@ -1,6 +1,5 @@
-import { Flex } from '@keystar/ui/layout';
-import { Text } from '@keystar/ui/typography';
 import { AssetCard, AssetCardProps } from './AssetCard';
+import { EmptyState } from './EmptyState';
 
 export type AssetGridItem = AssetCardProps & { key: string };
 
@@ -9,11 +8,7 @@ export function AssetGrid(props: {
   emptyMessage?: string;
 }) {
   if (props.items.length === 0) {
-    return (
-      <Text color="neutralTertiary">
-        {props.emptyMessage ?? 'Nothing here yet.'}
-      </Text>
-    );
+    return <EmptyState message={props.emptyMessage ?? 'Nothing here yet.'} />;
   }
   return (
     <div
