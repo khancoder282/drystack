@@ -65,9 +65,13 @@ type BrandRecord = {
   label: string;        // hiển thị + copy: "2026-07-12 - 20:00:00 - Khan Trần - Editor"
   login: string;        // github login lúc tạo
   createdAt: number;    // epoch ms
-  baseCommitOid: string;// commit HEAD của main lúc tạo brand
-  baseTreeSha: string;  // tree oid của main lúc tạo brand — mốc base cho 3-way
 };
+// KHÔNG lưu base (baseCommitOid/baseTreeSha) ở đây. Bản ghi này có thể mất
+// (đổi trình duyệt, xoá storage, mở thẳng /branch/<ref>) và mọi lần dựng lại
+// đều phải ĐOÁN base = main HEAD hiện tại → base === theirs → §6 hiểu ngược mọi
+// commit code mới trên main thành "brand đã xoá/đổi" và Deploy ghi main lùi về
+// cây của brand (đã xảy ra thật: commit 76f7c84, 2026-07-13). Base là dữ kiện
+// của git, không phải thứ để nhớ → §6 hỏi GitHub merge base mỗi lần deploy.
 // key = `${owner}/${name}` (per-repo). IndexedDB là per-browser/thiết bị →
 // mỗi thiết bị có brand riêng, các tab cùng thiết bị chia sẻ 1 brand.
 ```
@@ -104,7 +108,7 @@ Vào /drystack (github mode)
         ▼                      ▼
  redirect /branch/<ref>   tạo brand mới:
                             createRef(oid = main.commitSha)
-                            lưu BrandRecord (baseTree/CommitOid = main hiện tại)
+                            lưu BrandRecord (ref/label/login/createdAt — không base)
                             redirect /branch/<ref>
 ```
 
@@ -127,8 +131,13 @@ deploy():
   mainRef = useBranches().get(main)      // {commitSha, treeSha} — app shell giữ tươi
   brandRef= useBranches().get(brand.ref)
 
+  // 0) Hỏi git điểm rẽ nhánh THẬT (bắt buộc — không được đoán, xem §5).
+  //    Lỗi ở bước này = huỷ deploy, không merge với base không chắc chắn.
+  base = GET /repos/:repo/compare/<main.commitSha>...<brandRef.commitSha>
+         → merge_base_commit.{sha, commit.tree.sha}
+
   // 1) Lấy 3 cây file (unscoped — thao tác trên file thật của repo)
-  baseTree   = fetchGitHubTreeData(brand.baseTreeSha)   // mốc chung
+  baseTree   = fetchGitHubTreeData(base.treeSha)        // mốc chung
   oursTree   = fetchGitHubTreeData(brandRef.treeSha)    // brand
   theirsTree = fetchGitHubTreeData(mainRef.treeSha)     // main hiện tại
 

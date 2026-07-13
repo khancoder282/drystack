@@ -14,6 +14,7 @@ import type { Config } from '@drystack/core';
 import { toastQueue } from '@keystar/ui/toast';
 import { watchBuildStatus } from '@drystack/core/build-status';
 import { classifyChanges, merge3Text } from '@drystack/core/deploy-merge';
+import { fetchMergeBase } from '@drystack/core/deploy-merge-base';
 import {
   readBrandRecord,
   writeBrandRecord,
@@ -122,12 +123,10 @@ const RefsQuery = `
   }
 `;
 
-// Selects the new commit's tree oid (unlike save.ts's commit mutation) so the
-// rotated brand can record it as its base tree.
 const CreateCommitMutation = `
   mutation VeiCreateCommit($input: CreateCommitOnBranchInput!) {
     createCommitOnBranch(input: $input) {
-      ref { id target { oid ... on Commit { tree { oid } } } }
+      ref { id target { oid } }
     }
   }
 `;
@@ -190,10 +189,22 @@ async function runDeploy(
     const mainCommit: string = mainRef.target.oid;
     const mainTree: string = mainRef.target.tree.oid;
     const brandRefId: string = brandRefNode.id;
+    const brandCommit: string = brandRefNode.target.oid;
     const brandTree: string = brandRefNode.target.tree.oid;
 
+    // Ask git where the brand actually diverged, every time — a base guessed
+    // from "main's HEAD today" makes the merge below roll main back to the
+    // brand's tree (see @drystack/core/deploy-merge-base). Throwing aborts the
+    // deploy rather than committing against a base we aren't sure of.
+    const mergeBase = await fetchMergeBase(
+      token!,
+      `${owner}/${name}`,
+      mainCommit,
+      brandCommit
+    );
+
     const [baseEntries, oursEntries, theirsEntries] = await Promise.all([
-      fetchTreeEntries(token!, owner, name, brand!.baseTreeSha),
+      fetchTreeEntries(token!, owner, name, mergeBase.treeSha),
       fetchTreeEntries(token!, owner, name, brandTree),
       fetchTreeEntries(token!, owner, name, mainTree),
     ]);
@@ -265,10 +276,9 @@ async function runDeploy(
       throw err;
     }
 
-    const target = commitData?.createCommitOnBranch?.ref?.target;
-    const newCommitOid: string | undefined = target?.oid;
-    const newTreeOid: string | undefined = target?.tree?.oid;
-    if (!newCommitOid || !newTreeOid) {
+    const newCommitOid: string | undefined =
+      commitData?.createCommitOnBranch?.ref?.target?.oid;
+    if (!newCommitOid) {
       throw new Error('Deploy thất bại — không nhận được commit mới.');
     }
 
@@ -295,8 +305,6 @@ async function runDeploy(
           label: formatBrandLabel(now, viewerName, 'Editor'),
           login,
           createdAt: now.getTime(),
-          baseCommitOid: newCommitOid,
-          baseTreeSha: newTreeOid,
         };
         await writeBrandRecord(config as any, newBrand);
       }

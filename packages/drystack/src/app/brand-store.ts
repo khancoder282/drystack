@@ -9,13 +9,16 @@ import { createStore, get, set, del, type UseStore } from 'idb-keyval';
 import type { GitHubConfig } from '../config';
 import { serializeRepoConfig } from './repo-config';
 
+// Deliberately holds no merge base: the base a brand was cut from is a fact
+// about the two refs, and deploy re-derives it from GitHub every time (see
+// deploy/merge-base.ts). Storing it here meant that whenever the record was
+// lost, it got rebuilt with a *guessed* base — which made Deploy roll the
+// default branch back to the brand's tree.
 export type BrandRecord = {
   ref: string;
   label: string;
   login: string;
   createdAt: number;
-  baseCommitOid: string;
-  baseTreeSha: string;
 };
 
 let store: UseStore | undefined;

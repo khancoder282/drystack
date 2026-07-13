@@ -23,6 +23,7 @@
     "./brand-store": "./src/app/brand-store.ts",
     "./brand-label": "./src/app/brand-label.ts",
     "./deploy-merge": "./src/app/deploy/merge3.ts",
+    "./deploy-merge-base": "./src/app/deploy/merge-base.ts",
     "./deploy-progress-toast": "./src/app/DeployProgressToast.tsx",
     "./yaml": "./src/yaml.ts",
     "./reader": "./src/reader/index.ts",

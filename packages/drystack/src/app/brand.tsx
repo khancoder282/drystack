@@ -118,10 +118,6 @@ export function useEnsureBrandAtRoot(config: GitHubConfig): void {
         login: viewer.login,
         name: viewer.name ?? viewer.login,
         defaultBranchCommitOid: defaultRef.target!.oid,
-        defaultBranchTreeSha:
-          defaultRef.target!.__typename === 'Commit'
-            ? defaultRef.target!.tree.oid
-            : '',
       });
       if (!record) {
         // mutation failed (e.g. transient network error) — allow a retry on
@@ -169,22 +165,20 @@ export function useBrandGuard(config: Config): void {
     const branchInfo = branches.get(currentBranch);
     if (branchInfo && currentBranch !== repoInfo.defaultBranch) {
       // the URL's branch is a real ref — adopt it into context, reusing the
-      // stored record if it matches, otherwise reconstructing a best-effort
-      // one (base = today's default branch HEAD; see plan/brand.md §16).
+      // stored record if it matches, otherwise reconstructing one from the ref
+      // itself. Nothing here is a guess any more: a record is just a name +
+      // who/when, and deploy asks GitHub for the merge base (deploy/merge-base.ts).
       startedRef.current = currentBranch;
       readBrandRecord(githubConfig).then(existing => {
         if (existing?.ref === currentBranch) {
           setRecord(existing);
           return;
         }
-        const defaultBranchInfo = branches.get(repoInfo.defaultBranch);
         const fallback: BrandRecord = {
           ref: currentBranch,
           label: currentBranch,
           login: viewer.login,
           createdAt: Date.now(),
-          baseCommitOid: defaultBranchInfo?.commitSha ?? branchInfo.commitSha,
-          baseTreeSha: defaultBranchInfo?.treeSha ?? branchInfo.treeSha,
         };
         writeBrandRecord(githubConfig, fallback).then(() => setRecord(fallback));
       });
@@ -230,7 +224,6 @@ export function useBrandGuard(config: Config): void {
         login: viewer.login,
         name: viewer.name ?? viewer.login,
         defaultBranchCommitOid: defaultBranchInfo.commitSha,
-        defaultBranchTreeSha: defaultBranchInfo.treeSha,
       });
       if (!newRecord) {
         startedRef.current = null;
@@ -269,7 +262,6 @@ export async function createBrand(
     login: string;
     name: string;
     defaultBranchCommitOid: string;
-    defaultBranchTreeSha: string;
   }
 ): Promise<BrandRecord | null> {
   const now = new Date();
@@ -290,8 +282,6 @@ export async function createBrand(
     label,
     login: args.login,
     createdAt: now.getTime(),
-    baseCommitOid: args.defaultBranchCommitOid,
-    baseTreeSha: args.defaultBranchTreeSha,
   };
   await writeBrandRecord(config, record);
   return record;

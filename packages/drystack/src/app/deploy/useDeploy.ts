@@ -8,6 +8,7 @@ import { gql } from '@ts-gql/tag/no-transform';
 
 import { GitHubConfig } from '../../config';
 import { base64Encode } from '#base64';
+import { getAuth } from '../auth';
 import { useRouter } from '../router';
 import {
   createBrand,
@@ -35,6 +36,7 @@ import {
   merge3Text,
   resolveHunks,
 } from './merge3';
+import { fetchMergeBase } from './merge-base';
 
 export type ConflictFileState = {
   path: string;
@@ -178,8 +180,24 @@ export function useDeploy() {
         return 'done';
       }
 
+      // The 3-way base is the *merge base* of the two refs as git sees it right
+      // now — never a value carried on the brand record. Throwing here aborts
+      // the whole deploy (the caller's try/catch surfaces it): merging against
+      // a wrong base is how main gets rolled back, so no base means no deploy.
+      const auth = await getAuth(githubConfig, basePath);
+      if (!auth) {
+        setState({ kind: 'idle', error: 'Phiên GitHub đã hết hạn — đăng nhập lại.' });
+        return 'done';
+      }
+      const mergeBase = await fetchMergeBase(
+        auth.accessToken,
+        `${repoInfo!.owner}/${repoInfo!.name}`,
+        mainRef.commitSha,
+        brandRef.commitSha
+      );
+
       const [baseTree, oursTree, theirsTree] = await Promise.all([
-        fetchGitHubTreeData(brand!.baseTreeSha, githubConfig, basePath),
+        fetchGitHubTreeData(mergeBase.treeSha, githubConfig, basePath),
         fetchGitHubTreeData(brandRef.treeSha, githubConfig, basePath),
         fetchGitHubTreeData(mainRef.treeSha, githubConfig, basePath),
       ]);
@@ -220,7 +238,7 @@ export function useDeploy() {
               githubConfig,
               baseTree.entries.get(path),
               path,
-              brand!.baseCommitOid,
+              mergeBase.commitSha,
               repoInfo!,
               basePath
             ),
@@ -329,7 +347,6 @@ export function useDeploy() {
         login: viewer!.login,
         name: viewer!.name ?? viewer!.login,
         defaultBranchCommitOid: newCommitOid,
-        defaultBranchTreeSha: target.tree.oid,
       });
       if (newRecord) {
         setRecord(newRecord);
