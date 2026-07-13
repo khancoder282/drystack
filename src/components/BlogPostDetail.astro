@@ -19,7 +19,7 @@ interface Props {
 
 const { post, related, basePath, eyebrowLabel, backLabel } = Astro.props;
 
-const { brand } = await getHomepage();
+const { brand } = await getHomepage() as any;
 const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
 	brand.name,
 );
