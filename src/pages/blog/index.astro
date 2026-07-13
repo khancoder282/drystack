@@ -11,6 +11,7 @@ const [posts, page] = await Promise.all([getBlogPosts(), getBlogListingPage()]);
   basePath="/blog"
   metaTitle={page.metaTitle}
   metaDescription={page.metaDescription}
+  keywords={page.keywords}
   ogImage={page.ogImage || undefined}
   eyebrow={page.eyebrow}
   heading={page.heading}

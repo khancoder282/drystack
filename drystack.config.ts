@@ -78,6 +78,10 @@ export default config({
           multiline: true,
           description: "Để trống sẽ dùng mô tả ngắn",
         }),
+        keywords: fields.text({
+          label: "Từ khóa SEO",
+          description: "Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
+        }),
         ogImage: fields.image({ label: "Ảnh chia sẻ (OG image)" }),
         icon: fields.select({
           label: "Icon",
@@ -161,6 +165,11 @@ export default config({
             description: fields.text({
               label: "Mô tả mặc định (meta description)",
               multiline: true,
+            }),
+            keywords: fields.text({
+              label: "Từ khóa SEO mặc định",
+              description:
+                "Dùng cho các trang chưa nhập từ khóa riêng. Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
             }),
             ogImage: fields.image({ label: "Ảnh chia sẻ mặc định (OG image)" }),
           },
@@ -314,6 +323,10 @@ export default config({
           label: "Meta description",
           multiline: true,
         }),
+        keywords: fields.text({
+          label: "Từ khóa SEO",
+          description: "Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
+        }),
         ogImage: fields.image({ label: "Ảnh chia sẻ (OG image)" }),
         hero: fields.object(
           {
@@ -402,6 +415,10 @@ export default config({
           label: "Meta description",
           multiline: true,
         }),
+        keywords: fields.text({
+          label: "Từ khóa SEO",
+          description: "Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
+        }),
         ogImage: fields.image({ label: "Ảnh chia sẻ (OG image)" }),
         eyebrow: fields.text({ label: "Eyebrow" }),
         heading: fields.text({
@@ -419,6 +436,10 @@ export default config({
           label: "Meta description",
           multiline: true,
         }),
+        keywords: fields.text({
+          label: "Từ khóa SEO",
+          description: "Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
+        }),
         ogImage: fields.image({ label: "Ảnh chia sẻ (OG image)" }),
         eyebrow: fields.text({ label: "Eyebrow" }),
         heading: fields.text({
@@ -435,6 +456,10 @@ export default config({
         metaDescription: fields.text({
           label: "Meta description",
           multiline: true,
+        }),
+        keywords: fields.text({
+          label: "Từ khóa SEO",
+          description: "Cách nhau bởi dấu phẩy, VD: từ khoá 1, từ khoá 2",
         }),
         ogImage: fields.image({ label: "Ảnh chia sẻ (OG image)" }),
         eyebrow: fields.text({ label: "Eyebrow" }),

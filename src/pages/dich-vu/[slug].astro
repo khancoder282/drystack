@@ -52,6 +52,7 @@ const breadcrumbSchema = {
 <Main
 	title={service.metaTitle || `${service.title} | ${siteName}`}
 	description={service.metaDescription || service.desc}
+	keywords={service.keywords}
 	image={service.ogImage || undefined}
 >
 	<JsonLd schema={[serviceSchema, breadcrumbSchema]} />
