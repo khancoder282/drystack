@@ -1,7 +1,9 @@
 {
   "name": "@drystack/astro",
   "version": "5.1.0",
+  "description": "Astro integration for drystack, a git-backed CMS for Astro inspired by Keystatic.",
   "license": "MIT",
+  "homepage": "https://github.com/khancoder282/drystack",
   "repository": {
     "type": "git",
     "url": "https://github.com/khancoder282/drystack/",
@@ -21,7 +23,17 @@
     "./internal/drystack-astro-page.astro": "./internal/drystack-astro-page.astro"
   },
   "keywords": [
-    "astro-integration"
+    "astro-integration",
+    "astro",
+    "astro-component",
+    "drystack",
+    "cms",
+    "keystatic",
+    "cloudflare",
+    "cloudflare-workers",
+    "git-cms",
+    "headless-cms",
+    "content-management"
   ],
   "files": [
     "dist",

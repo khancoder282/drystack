@@ -1,6 +1,6 @@
 # @drystack/astro
 
-Astro integration for [drystack](https://github.com/khancoder282/drystack) — adds an admin UI route, content API, and live in-page editing toolbar to an Astro site backed by `@drystack/core`.
+**Astro plugin/integration for drystack** — a git-backed CMS for Astro, inspired by [Keystatic](https://keystatic.com). Adds an admin UI route, content API, and live in-page editing toolbar to an Astro site backed by `@drystack/core`.
 
 ## Install
 
@@ -21,6 +21,10 @@ export default defineConfig({
 ```
 
 See the [drystack repository](https://github.com/khancoder282/drystack) for full configuration (`drystack.config.ts`), storage modes (local/GitHub), and deployment notes (Cloudflare Workers).
+
+## Credits
+
+drystack is an independent project inspired by and forked from [Keystatic](https://github.com/Thinkmill/keystatic) (Thinkmill). It is not affiliated with or endorsed by the Keystatic project.
 
 ## License
 
