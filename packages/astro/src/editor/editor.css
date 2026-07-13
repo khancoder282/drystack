@@ -111,41 +111,13 @@ body > .kui-scheme--auto {
 .dry-fab-icon--edit.is-hidden { transform: rotate(-90deg) scale(0.3); }
 .dry-fab-icon--x.is-hidden { transform: rotate(90deg) scale(0.3); }
 
-/* Menu reveal — a true width collapse via animatable grid columns. */
-.dry-menu {
-  display: grid;
-  grid-template-columns: 0fr;
-  opacity: 0;
-  transform: translateX(-6px);
-  pointer-events: none;
-  transition: grid-template-columns 0.3s ease, opacity 0.25s ease,
-    transform 0.25s ease;
-}
-.dry-menu.is-open {
-  grid-template-columns: 1fr;
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-.dry-menu-inner {
-  min-width: 0;
-  /* Clip during the width collapse. Once open, flip to visible so the pill's
-     drop shadow isn't cut off — delayed past the animation via a 0s/delay
-     transition on this discrete property (closing reverts instantly). */
-  overflow: hidden;
-}
-.dry-menu.is-open .dry-menu-inner {
-  overflow: visible;
-  transition: overflow 0s 0.3s;
-}
-
-/* Unified edit menu — an always-visible pill anchored by the edit FAB.
-   Collapsed, the pill has no chrome at all, so it reads as a lone round button;
-   enabling edit adds the surface + border and slides the action buttons out to
-   the right. Colours come from Keystar's own scheme tokens (set on the
-   KeystarProvider wrapper this bar lives inside), so the pill tracks the
-   admin's light/dark theme choice rather than the OS `prefers-color-scheme`. */
-.dry-editmenu-pill {
+/* Unified menu — an always-visible pill led by its FAB, shared by both bar
+   menus (deploy and edit). Collapsed it hugs the lone FAB and reads as a round
+   button; opening it slides the action buttons out to the right. Colours come
+   from Keystar's own scheme tokens (set on the KeystarProvider wrapper this bar
+   lives inside), so the pill tracks the admin's light/dark theme choice rather
+   than the OS `prefers-color-scheme`. */
+.dry-menu-pill {
   display: flex;
   align-items: center;
   gap: 0;
@@ -158,29 +130,28 @@ body > .kui-scheme--auto {
   transition: gap 0.3s ease, padding 0.3s ease, background 0.3s ease,
     border-color 0.3s ease, box-shadow 0.3s ease;
 }
-/* Open → add the pill chrome. Base state stays bare so the collapsed FAB never
-   inherits a stray border/background. */
-.dry-editmenu.is-open .dry-editmenu-pill {
+/* Open → part the FAB from the actions that just slid out. */
+.dry-menu.is-open .dry-menu-pill {
   gap: 8px;
 }
 /* The FAB carries its own drop shadow only while it's the lone (collapsed)
    button; inside the open pill the pill's shadow takes over. */
-.dry-editmenu.is-open .dry-fab {
+.dry-menu.is-open .dry-fab {
   box-shadow: none !important;
 }
 
 /* Action group — the pill widens first (grid-column collapse); the buttons
    only fade/slide in once it's fully open, so icons never show before the menu
    has finished expanding. On close they fade out first, then the pill shrinks. */
-.dry-editmenu-actions {
+.dry-menu-actions {
   display: grid;
   grid-template-columns: 0fr;
   transition: grid-template-columns 0.3s ease;
 }
-.dry-editmenu.is-open .dry-editmenu-actions {
+.dry-menu.is-open .dry-menu-actions {
   grid-template-columns: 1fr;
 }
-.dry-editmenu-actions-inner {
+.dry-menu-actions-inner {
   min-width: 0;
   overflow: hidden;
   display: flex;
@@ -190,7 +161,7 @@ body > .kui-scheme--auto {
   transform: translateX(-6px);
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
-.dry-editmenu.is-open .dry-editmenu-actions-inner {
+.dry-menu.is-open .dry-menu-actions-inner {
   overflow: visible;
   opacity: 1;
   transform: none;

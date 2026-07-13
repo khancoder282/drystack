@@ -17,7 +17,6 @@ import { trash2Icon } from '@keystar/ui/icon/icons/trash2Icon';
 import { rotateCcwIcon } from '@keystar/ui/icon/icons/rotateCcwIcon';
 import { rocketIcon } from '@keystar/ui/icon/icons/rocketIcon';
 import { gitBranchIcon } from '@keystar/ui/icon/icons/gitBranchIcon';
-import { HStack } from '@keystar/ui/layout';
 import { Content } from '@keystar/ui/slots';
 import { toastQueue } from '@keystar/ui/toast';
 import { Tooltip, TooltipTrigger } from '@keystar/ui/tooltip';
@@ -242,42 +241,32 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
 
   return (
     <div className="dry-bar">
+      {/* Deploy menu — same unified pill as the edit menu below: collapsed it's
+          just the rocket FAB; opening it expands the brand chip + deploy action
+          out to the right and morphs the rocket into an ✕. */}
       {isGithub && (
-        <>
-          <Button
-            prominence="high"
-            aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
-            onPress={toggleDeploy}
-            UNSAFE_className="dry-fab"
-          >
-            <span
-              className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
+        <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
+          <div className="dry-menu-pill">
+            <Button
+              prominence="high"
+              aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
+              onPress={toggleDeploy}
+              UNSAFE_className="dry-fab"
             >
-              <Icon src={rocketIcon} />
-            </span>
-            <span
-              className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
-            >
-              <Icon src={xIcon} />
-            </span>
-          </Button>
-
-          <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
-            <div className="dry-menu-inner">
-              <HStack
-                gap="regular"
-                alignItems="center"
-                backgroundColor="surface"
-                border="muted"
-                borderRadius="full"
-                paddingX="medium"
-                paddingY="regular"
-                elementType="section"
-                UNSAFE_style={{
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
-                  overflow: 'hidden',
-                }}
+              <span
+                className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
               >
+                <Icon src={rocketIcon} />
+              </span>
+              <span
+                className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
+              >
+                <Icon src={xIcon} />
+              </span>
+            </Button>
+
+            <div className="dry-menu-actions">
+              <div className="dry-menu-actions-inner">
                 <ActionButton
                   isDisabled={!brand}
                   flex
@@ -309,18 +298,18 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
                   </Button>
                   <Tooltip>{deployLabel}</Tooltip>
                 </TooltipTrigger>
-              </HStack>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Unified edit menu — a single pill that's always on screen. Collapsed
           it's just the edit FAB; enabling edit expands the action buttons out
           to the right (width collapse) and morphs the pencil into an ✕ that
           collapses the menu again. */}
-      <div className={`dry-editmenu${editing ? ' is-open' : ''}`}>
-        <div className="dry-editmenu-pill">
+      <div className={`dry-menu${editing ? ' is-open' : ''}`}>
+        <div className="dry-menu-pill">
           {/* Toggle button — always visible, leads the pill. */}
           <Button
             prominence="high"
@@ -341,8 +330,8 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
           </Button>
 
           {/* Collapsible action group — revealed only in edit mode. */}
-          <div className="dry-editmenu-actions">
-            <div className="dry-editmenu-actions-inner">
+          <div className="dry-menu-actions">
+            <div className="dry-menu-actions-inner">
               <div
                 className="dry-ref"
                 ref={refWrapRef}
