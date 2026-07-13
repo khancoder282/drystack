@@ -386,12 +386,8 @@ export function useVeiDeploy(config: Config<any, any>) {
     };
     buildStopRef.current?.();
     buildStopRef.current = watchBuildStatus(outcome.commitOid, update => {
-      if (update.kind === 'label') {
-        setState({ kind: 'building', label: update.label });
-        return;
-      }
       if (update.kind === 'phase' && update.phase === 'started') {
-        setState({ kind: 'building', label: 'Đang cài đặt dependencies…' });
+        setState({ kind: 'building', label: 'Đang build…' });
         return;
       }
       if (update.kind === 'timeout') {

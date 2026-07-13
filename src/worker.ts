@@ -2,9 +2,9 @@ import { handle } from '@astrojs/cloudflare/handler';
 import { DurableObject } from 'cloudflare:workers';
 
 // A build's lifecycle as Cloudflare Workers Builds reports it. There is no
-// install/build/deploy sub-step event — only these four. The client-side
-// toast simulates the intermediate labels against elapsed time; only
-// `succeeded`/`failed`/`canceled` are real signals.
+// install/build/deploy sub-step event — only these four — so clients show a
+// single "building" state between `started` and the terminal phase instead
+// of fabricating sub-step progress.
 type BuildPhase = 'started' | 'succeeded' | 'failed' | 'canceled';
 
 type BuildEvent = {

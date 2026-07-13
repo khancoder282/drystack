@@ -2,32 +2,22 @@
 // server side in `src/worker.ts` (BuildStatusHub Durable Object). Cloudflare
 // only reports four lifecycle events for a build — `started`, `succeeded`,
 // `failed`, `canceled` — there is no native "installing deps" / "building" /
-// "deploying" sub-step signal. The install/build/deploy labels shown while a
-// build is `started` are therefore simulated against elapsed time, not real
-// progress; only the terminal phases are a genuine signal from Cloudflare.
+// "deploying" sub-step signal, so callers just show one accurate "building"
+// state between `started` and the terminal phase rather than fabricating
+// sub-step timing (real builds run ~20-25s end to end, too fast and too
+// variable for a fake staged countdown to track).
 
 export type BuildPhase = 'started' | 'succeeded' | 'failed' | 'canceled';
 
 export type BuildStatusUpdate =
   | { kind: 'connecting' }
   | { kind: 'phase'; phase: BuildPhase }
-  | { kind: 'label'; label: string }
   | { kind: 'disconnected' }
   | { kind: 'timeout' };
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 8000;
 const OVERALL_TIMEOUT_MS = 5 * 60 * 1000;
-
-// Paced against typical Workers Builds durations. Purely cosmetic — if a real
-// build runs faster or slower these just drift out of sync with reality,
-// which is an acceptable tradeoff since Cloudflare doesn't expose real
-// sub-step timing to key this off instead.
-const SIMULATED_STEPS: { atMs: number; label: string }[] = [
-  { atMs: 0, label: 'Installing dependencies…' },
-  { atMs: 15_000, label: 'Building…' },
-  { atMs: 45_000, label: 'Deploying…' },
-];
 
 export function watchBuildStatus(
   commitOid: string,
@@ -37,26 +27,10 @@ export function watchBuildStatus(
   let ws: WebSocket | null = null;
   let reconnectAttempt = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-  let simulateTimers: ReturnType<typeof setTimeout>[] = [];
   let overallTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
-
-  const clearSimulateTimers = () => {
-    simulateTimers.forEach(clearTimeout);
-    simulateTimers = [];
-  };
-
-  const startSimulatedProgress = () => {
-    clearSimulateTimers();
-    for (const step of SIMULATED_STEPS) {
-      simulateTimers.push(
-        setTimeout(() => onUpdate({ kind: 'label', label: step.label }), step.atMs)
-      );
-    }
-  };
 
   const stop = () => {
     closed = true;
-    clearSimulateTimers();
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (overallTimeoutTimer) clearTimeout(overallTimeoutTimer);
     ws?.close();
@@ -64,11 +38,7 @@ export function watchBuildStatus(
 
   const handlePhase = (phase: BuildPhase) => {
     onUpdate({ kind: 'phase', phase });
-    if (phase === 'started') {
-      startSimulatedProgress();
-      return;
-    }
-    stop();
+    if (phase !== 'started') stop();
   };
 
   const connect = () => {

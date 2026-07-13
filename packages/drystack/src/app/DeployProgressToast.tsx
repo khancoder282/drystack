@@ -16,12 +16,8 @@ function DeployProgressToastBody({
   useEffect(() => {
     settledRef.current = false;
     return watchBuildStatus(commitOid, update => {
-      if (update.kind === 'label') {
-        setLabel(update.label);
-        return;
-      }
       if (update.kind === 'phase' && update.phase === 'started') {
-        setLabel('Đang cài đặt dependencies…');
+        setLabel('Đang build…');
         return;
       }
       if (settledRef.current) return;

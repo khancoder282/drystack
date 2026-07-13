@@ -58,12 +58,8 @@ export function DeployButton() {
     };
 
     return watchBuildStatus(state.commitOid, update => {
-      if (update.kind === 'label') {
-        setBuildLabel(update.label);
-        return;
-      }
       if (update.kind === 'phase' && update.phase === 'started') {
-        setBuildLabel('Installing dependencies…');
+        setBuildLabel('Building…');
         return;
       }
       if (update.kind === 'timeout') {
