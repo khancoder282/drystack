@@ -13,6 +13,10 @@ interface Props {
   keywords?: string;
   image?: string;
   type?: "website" | "article";
+  // Trang tĩnh (404, trang cảm ơn...) không có phần tử reveal/parallax và
+  // không cần nút liên hệ nổi — cho phép tắt để bớt JS và DOM thừa.
+  floatingContact?: boolean;
+  animations?: boolean;
 }
 
 const { seoDefaults, brand, contact, socialLinks } =
@@ -25,7 +29,9 @@ const {
   keywords: keywordsProp,
   image = seoDefaults.ogImage || defaultOgImage.src,
   type = "website",
-} = Astro.props;
+  floatingContact = true,
+  animations = true,
+} = Astro.props as Props;
 
 // Mỗi trang có thể nhập từ khóa riêng; nếu bỏ trống thì dùng
 // từ khóa SEO mặc định của toàn site.
@@ -120,7 +126,8 @@ const websiteSchema = {
   </head>
   <body>
     <slot />
-    <FloatingContact />
+    {floatingContact && <FloatingContact />}
+    {animations && (
     <script>
       // Stagger: các phần tử .reveal trong container [data-stagger]
       // sẽ xuất hiện lần lượt (delay tăng dần), tạo hiệu ứng đổ dây.
@@ -203,5 +210,6 @@ const websiteSchema = {
         updateParallax();
       }
     </script>
+    )}
   </body>
 </html>
