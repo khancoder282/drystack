@@ -54,8 +54,9 @@ export function createUrqlClient(config: Config, basePath: string): Client {
           willAuthError(operation) {
             authState = getSyncAuth(config);
             if (
-              operation.query.definitions[0].kind === 'OperationDefinition' &&
-              operation.query.definitions[0].name?.value.includes('AppShell') &&
+              'definitions' in operation.query &&
+              operation.query.definitions[0]?.kind === 'OperationDefinition' &&
+              operation.query.definitions[0]?.name?.value.includes('AppShell') &&
               !authState
             ) {
               if (config.storage.kind === 'github') {

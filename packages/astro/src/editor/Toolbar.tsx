@@ -315,92 +315,94 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
         </>
       )}
 
-      <Button
-        prominence="high"
-        aria-label={editing ? 'Exit edit mode' : 'Edit page'}
-        onPress={toggleEdit}
-        UNSAFE_className="dry-fab"
-      >
-        <span className={`dry-fab-icon dry-fab-icon--edit${editing ? ' is-hidden' : ''}`}>
-          <Icon src={editIcon} />
-        </span>
-        <span className={`dry-fab-icon dry-fab-icon--x${editing ? '' : ' is-hidden'}`}>
-          <Icon src={xIcon} />
-        </span>
-      </Button>
-
-      <div className={`dry-menu${editing ? ' is-open' : ''}`}>
-        <div className="dry-menu-inner">
-          <HStack
-            gap="regular"
-            alignItems="center"
-            backgroundColor="surface"
-            border="muted"
-            borderRadius="full"
-            paddingX="medium"
-            paddingY="regular"
-            elementType="section"
-            UNSAFE_style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.18)', overflow: 'hidden' }}
+      {/* Unified edit menu — a single pill that's always on screen. Collapsed
+          it's just the edit FAB; enabling edit expands the action buttons out
+          to the right (width collapse) and morphs the pencil into an ✕ that
+          collapses the menu again. */}
+      <div className={`dry-editmenu${editing ? ' is-open' : ''}`}>
+        <div className="dry-editmenu-pill">
+          {/* Toggle button — always visible, leads the pill. */}
+          <Button
+            prominence="high"
+            aria-label={editing ? 'Exit edit mode' : 'Edit page'}
+            onPress={toggleEdit}
+            UNSAFE_className="dry-fab"
           >
-            <div
-              className="dry-ref"
-              ref={refWrapRef}
-              onMouseEnter={openRefMenu}
-              onMouseLeave={scheduleCloseRefMenu}
+            <span
+              className={`dry-fab-icon dry-fab-icon--edit${editing ? ' is-hidden' : ''}`}
             >
-              <ActionButton
-                aria-label="Open in drystack admin"
-                onPress={openAdminHome}
-                UNSAFE_className="dry-iconbtn"
-              >
-                <Icon src={externalLinkIcon} />
-              </ActionButton>
-            </div>
+              <Icon src={editIcon} />
+            </span>
+            <span
+              className={`dry-fab-icon dry-fab-icon--x${editing ? '' : ' is-hidden'}`}
+            >
+              <Icon src={xIcon} />
+            </span>
+          </Button>
 
-            <TooltipTrigger>
-              <div className="dry-review">
+          {/* Collapsible action group — revealed only in edit mode. */}
+          <div className="dry-editmenu-actions">
+            <div className="dry-editmenu-actions-inner">
+              <div
+                className="dry-ref"
+                ref={refWrapRef}
+                onMouseEnter={openRefMenu}
+                onMouseLeave={scheduleCloseRefMenu}
+              >
                 <ActionButton
-                  aria-label="Review changes"
-                  onPress={() => setReviewOpen(true)}
-                  isDisabled={nothingToSave}
+                  aria-label="Open in drystack admin"
+                  onPress={openAdminHome}
                   UNSAFE_className="dry-iconbtn"
                 >
-                  <Icon src={eyeIcon} />
+                  <Icon src={externalLinkIcon} />
                 </ActionButton>
-                {!nothingToSave && (
-                  <span className="dry-badge">
-                    <Badge tone="accent">{pendingCount}</Badge>
-                  </span>
-                )}
               </div>
-              <Tooltip>Review changes</Tooltip>
-            </TooltipTrigger>
 
-            <TooltipTrigger>
-              <ActionButton
-                aria-label="Reset changes"
-                onPress={onReset}
-                isDisabled={nothingToSave || saving}
-                UNSAFE_className="dry-iconbtn"
-              >
-                <Icon src={rotateCcwIcon} />
-              </ActionButton>
-              <Tooltip>Reset changes</Tooltip>
-            </TooltipTrigger>
+              <TooltipTrigger>
+                <div className="dry-review">
+                  <ActionButton
+                    aria-label="Review changes"
+                    onPress={() => setReviewOpen(true)}
+                    isDisabled={nothingToSave}
+                    UNSAFE_className="dry-iconbtn"
+                  >
+                    <Icon src={eyeIcon} />
+                  </ActionButton>
+                  {!nothingToSave && (
+                    <span className="dry-badge">
+                      <Badge tone="accent">{pendingCount}</Badge>
+                    </span>
+                  )}
+                </div>
+                <Tooltip>Review changes</Tooltip>
+              </TooltipTrigger>
 
-            <TooltipTrigger>
-              <Button
-                aria-label="Save changes"
-                prominence="high"
-                onPress={onSave}
-                isDisabled={nothingToSave || saving}
-                UNSAFE_className="dry-iconbtn"
-              >
-                <Icon src={saveIcon} />
-              </Button>
-              <Tooltip>{saving ? 'Saving…' : 'Save changes'}</Tooltip>
-            </TooltipTrigger>
-          </HStack>
+              <TooltipTrigger>
+                <ActionButton
+                  aria-label="Reset changes"
+                  onPress={onReset}
+                  isDisabled={nothingToSave || saving}
+                  UNSAFE_className="dry-iconbtn"
+                >
+                  <Icon src={rotateCcwIcon} />
+                </ActionButton>
+                <Tooltip>Reset changes</Tooltip>
+              </TooltipTrigger>
+
+              <TooltipTrigger>
+                <Button
+                  aria-label="Save changes"
+                  prominence="high"
+                  onPress={onSave}
+                  isDisabled={nothingToSave || saving}
+                  UNSAFE_className="dry-iconbtn"
+                >
+                  <Icon src={saveIcon} />
+                </Button>
+                <Tooltip>{saving ? 'Saving…' : 'Save changes'}</Tooltip>
+              </TooltipTrigger>
+            </div>
+          </div>
         </div>
       </div>
 

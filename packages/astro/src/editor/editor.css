@@ -2,9 +2,15 @@
    ?inline). Covers both the editable-element outlines on the live page and the
    floating editor UI. The editor renders in the light DOM (no shadow root), so
    every class here is namespaced `dry-` to avoid colliding with the host
-   site's own styles. Keystar components inside the bar are theme-aware; the raw
-   elements below mirror light/dark via prefers-color-scheme, which is also what
-   drives the KeystarProvider scheme. */
+   site's own styles.
+
+   Theme: KeystarProvider's colour scheme follows the admin's stored choice
+   (localStorage 'drystack-color-scheme': auto|light|dark — see index.tsx), NOT
+   the OS `prefers-color-scheme`. Raw elements that live inside the provider
+   (the edit pill, the review dialog) therefore read Keystar's own `--kui-*`
+   scheme tokens so they track that choice. Only `.dry-ref-menu`, which React-
+   portals straight to <body> outside the provider, falls back to a
+   prefers-color-scheme media query. */
 
 body.editing [data-dry] {
   outline: 2px solid rgba(0, 128, 255, 0.5);
@@ -29,6 +35,20 @@ body.editing [data-dry]:hover {
 #drystack-editor-root {
   position: relative;
   z-index: 2147483000;
+}
+
+/* Keystar portals its overlays (the Review dialog + its blanket, tooltips,
+   toasts) to <body> via react-aria's default target, so they mount as direct
+   children of <body> — outside #drystack-editor-root's stacking context and
+   with no z-index of their own. Without this, the host page's positioned
+   sections (z-index 1..60) paint over the dialog. Lift any Keystar overlay
+   layer that lands directly on <body>. The main editor provider is nested
+   inside #drystack-editor-root, so `body >` never matches it. */
+body > .kui-scheme--light,
+body > .kui-scheme--dark,
+body > .kui-scheme--auto {
+  position: relative;
+  z-index: 2147483001;
 }
 
 .dry-bar {
@@ -119,6 +139,67 @@ body.editing [data-dry]:hover {
   transition: overflow 0s 0.3s;
 }
 
+/* Unified edit menu — an always-visible pill anchored by the edit FAB.
+   Collapsed, the pill has no chrome at all, so it reads as a lone round button;
+   enabling edit adds the surface + border and slides the action buttons out to
+   the right. Colours come from Keystar's own scheme tokens (set on the
+   KeystarProvider wrapper this bar lives inside), so the pill tracks the
+   admin's light/dark theme choice rather than the OS `prefers-color-scheme`. */
+.dry-editmenu-pill {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--kui-color-background-surface, #fff);
+  border-color: var(--kui-color-border-muted, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  border: 1px solid transparent;
+  transition: gap 0.3s ease, padding 0.3s ease, background 0.3s ease,
+    border-color 0.3s ease, box-shadow 0.3s ease;
+}
+/* Open → add the pill chrome. Base state stays bare so the collapsed FAB never
+   inherits a stray border/background. */
+.dry-editmenu.is-open .dry-editmenu-pill {
+  gap: 8px;
+}
+/* The FAB carries its own drop shadow only while it's the lone (collapsed)
+   button; inside the open pill the pill's shadow takes over. */
+.dry-editmenu.is-open .dry-fab {
+  box-shadow: none !important;
+}
+
+/* Action group — the pill widens first (grid-column collapse); the buttons
+   only fade/slide in once it's fully open, so icons never show before the menu
+   has finished expanding. On close they fade out first, then the pill shrinks. */
+.dry-editmenu-actions {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 0.3s ease;
+}
+.dry-editmenu.is-open .dry-editmenu-actions {
+  grid-template-columns: 1fr;
+}
+.dry-editmenu-actions-inner {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.dry-editmenu.is-open .dry-editmenu-actions-inner {
+  overflow: visible;
+  opacity: 1;
+  transform: none;
+  /* Reveal (and un-clip the review badge) only after the width animation
+     finishes; closing reverts instantly. */
+  transition: overflow 0s 0.3s, opacity 0.22s ease 0.26s,
+    transform 0.22s ease 0.26s;
+}
+
 /* Floating count badge, pinned to the top-right of the Review button. */
 .dry-review { position: relative; display: flex; }
 .dry-badge {
@@ -171,9 +252,10 @@ body.editing [data-dry]:hover {
 .dry-ref-item .dry-ref-name { font-weight: 600; }
 .dry-ref-empty { padding: 8px 10px; font-size: 13px; opacity: 0.6; }
 
-/* Review diff — text colour must follow the theme (dialog content is raw
-   markup, so it doesn't inherit a Keystar text colour). */
-.dry-diff { color: #1f2937; }
+/* Review diff — raw markup, so it doesn't inherit a Keystar text colour. The
+   dialog is wrapped in a KeystarProvider, so pull the theme-aware foreground
+   token (tracks the admin's light/dark choice, not the OS preference). */
+.dry-diff { color: var(--kui-color-foreground-neutral, #1f2937); }
 
 /* Review changes = one accordion item per edited key. Built to match Keystar
    (its Text/Icon in the header) with a smooth height collapse via animatable
@@ -208,7 +290,7 @@ body.editing [data-dry]:hover {
 .dry-acc-chevron {
   display: flex;
   flex: none;
-  color: #1f2937;
+  color: var(--kui-color-foreground-neutral, #1f2937);
   opacity: 0.6;
   transition: transform 0.2s ease;
 }
@@ -226,6 +308,11 @@ body.editing [data-dry]:hover {
   min-height: 0;
 }
 
+/* Only the singleton hover dropdown (.dry-ref-menu) needs a media query: it's
+   portaled straight to <body> with React's createPortal, outside any
+   KeystarProvider, so Keystar's scheme tokens don't cascade to it. The edit
+   pill and the review dialog both live inside a KeystarProvider and use the
+   `--kui-*` tokens above, so they track the theme without a media query. */
 @media (prefers-color-scheme: dark) {
   .dry-ref-menu {
     background: #1f2937;
@@ -234,6 +321,9 @@ body.editing [data-dry]:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
   .dry-ref-item:hover { background: rgba(255, 255, 255, 0.08); }
-  .dry-diff { color: #e5e7eb; }
-  .dry-acc-chevron { color: #e5e7eb; }
+}
+
+#drystack-editor-root {
+  position: relative;
+  z-index: 999999
 }
