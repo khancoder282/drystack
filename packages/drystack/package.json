@@ -4,38 +4,38 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Thinkmill/keystatic/",
+    "url": "https://github.com/khancoder282/drystack/",
     "directory": "packages/drystack"
   },
   "type": "module",
+  "files": ["dist"],
   "exports": {
-    ".": "./src/index.ts",
-    "./ui": "./src/ui.tsx",
-    "./api/utils": "./src/api/utils.ts",
-    "./api/generic": "./src/api/generic.ts",
-    "./renderer": "./src/renderer.tsx",
-    "./path-utils": "./src/app/path-utils.ts",
-    "./redirects": "./src/app/redirects.ts",
-    "./edit-sync": "./src/app/edit-sync.ts",
-    "./required-files": "./src/app/required-files.ts",
-    "./build-status": "./src/app/build-status.ts",
-    "./build-status-protocol": "./src/app/build-status-protocol.ts",
-    "./brand-store": "./src/app/brand-store.ts",
-    "./brand-label": "./src/app/brand-label.ts",
-    "./deploy-merge": "./src/app/deploy/merge3.ts",
-    "./deploy-merge-base": "./src/app/deploy/merge-base.ts",
-    "./deploy-progress-toast": "./src/app/DeployProgressToast.tsx",
-    "./yaml": "./src/yaml.ts",
-    "./reader": "./src/reader/index.ts",
-    "./reader/github": "./src/reader/github.ts",
-    "./content-components": "./src/content-components.ts",
+    ".": "./dist/index.js",
+    "./ui": "./dist/ui.js",
+    "./api/utils": "./dist/api/utils.js",
+    "./api/generic": "./dist/api/generic.js",
+    "./renderer": "./dist/renderer.js",
+    "./path-utils": "./dist/app/path-utils.js",
+    "./redirects": "./dist/app/redirects.js",
+    "./edit-sync": "./dist/app/edit-sync.js",
+    "./required-files": "./dist/app/required-files.js",
+    "./build-status": "./dist/app/build-status.js",
+    "./build-status-protocol": "./dist/app/build-status-protocol.js",
+    "./brand-store": "./dist/app/brand-store.js",
+    "./brand-label": "./dist/app/brand-label.js",
+    "./deploy-merge": "./dist/app/deploy/merge3.js",
+    "./deploy-merge-base": "./dist/app/deploy/merge-base.js",
+    "./deploy-progress-toast": "./dist/app/DeployProgressToast.js",
+    "./yaml": "./dist/yaml.js",
+    "./reader": "./dist/reader/index.js",
+    "./reader/github": "./dist/reader/github.js",
+    "./content-components": "./dist/content-components.js",
     "./package.json": "./package.json"
   },
   "scripts": {
-    "setup": "ts-gql build && tsx scripts/l10n.ts && tsx scripts/build-prism.ts",
-    "build": "pnpm run setup && next build",
-    "dev": "next dev",
-    "start": "next start"
+    "setup": "tsx scripts/l10n.ts && tsx scripts/build-prism.ts",
+    "build": "bun run setup && node scripts/build.mjs",
+    "dev": "astro dev"
   },
   "dependencies": {
     "@babel/runtime": "^7.18.3",
@@ -127,6 +127,7 @@
     "@vitest/pretty-format": "^3.0.5",
     "eslint": "^8.18.0",
     "jest-diff": "^29.0.1",
+    "mkdist": "^2.4.1",
     "outdent": "^0.8.0",
     "prismjs": "^1.29.0",
     "react": "^19.0.0",
@@ -142,18 +143,6 @@
     "react": "^18.2.0 || ^19.0.0",
     "react-dom": "^18.2.0 || ^19.0.0"
   },
-  "preconstruct": {
-    "entrypoints": [
-      "index.ts",
-      "api/generic.ts",
-      "api/utils.ts",
-      "reader/index.ts",
-      "reader/github.ts",
-      "renderer.tsx",
-      "ui.tsx",
-      "content-components.ts"
-    ]
-  },
   "ts-gql": {
     "schema": "./github.graphql",
     "mode": "no-transform",
@@ -164,45 +153,45 @@
   },
   "imports": {
     "#react-cache-in-react-server": {
-      "react-server": "./src/reader/react-server-cache.ts",
-      "default": "./src/reader/noop-cache.ts"
+      "react-server": "./dist/reader/react-server-cache.js",
+      "default": "./dist/reader/noop-cache.js"
     },
     "#sha1": {
-      "node": "./src/sha1/node.ts",
-      "default": "./src/sha1/webcrypto.ts"
+      "node": "./dist/sha1/node.js",
+      "default": "./dist/sha1/webcrypto.js"
     },
     "#webcrypto": {
-      "node": "./src/api/webcrypto/node.ts",
-      "default": "./src/api/webcrypto/default.ts"
+      "node": "./dist/api/webcrypto/node.js",
+      "default": "./dist/api/webcrypto/default.js"
     },
     "#api-handler": {
-      "node": "./src/api/api-node.ts",
-      "default": "./src/api/api-noop.ts"
+      "node": "./dist/api/api-node.js",
+      "default": "./dist/api/api-noop.js"
     },
     "#ui": {
-      "node": "./src/app/ui-empty.tsx",
-      "worker": "./src/app/ui-empty.tsx",
-      "react-server": "./src/app/ui-empty.tsx",
-      "default": "./src/app/ui.tsx"
+      "node": "./dist/app/ui-empty.js",
+      "worker": "./dist/app/ui-empty.js",
+      "react-server": "./dist/app/ui-empty.js",
+      "default": "./dist/app/ui.js"
     },
     "#field-ui/*": {
-      "node": "./src/form/fields/empty-field-ui.tsx",
-      "worker": "./src/form/fields/empty-field-ui.tsx",
-      "react-server": "./src/form/fields/empty-field-ui.tsx",
-      "default": "./src/form/fields/*/ui.tsx"
+      "node": "./dist/form/fields/empty-field-ui.js",
+      "worker": "./dist/form/fields/empty-field-ui.js",
+      "react-server": "./dist/form/fields/empty-field-ui.js",
+      "default": "./dist/form/fields/*/ui.js"
     },
-    "#icons/*": "./src/app/icons/*.tsx",
+    "#icons/*": "./dist/app/icons/*.js",
     "#component-block-primitives": {
-      "node": "./src/component-blocks/primitives/blank-for-react-server.tsx",
-      "worker": "./src/component-blocks/primitives/blank-for-react-server.tsx",
-      "react-server": "./src/component-blocks/primitives/blank-for-react-server.tsx",
-      "default": "./src/component-blocks/primitives/index.tsx"
+      "node": "./dist/component-blocks/primitives/blank-for-react-server.js",
+      "worker": "./dist/component-blocks/primitives/blank-for-react-server.js",
+      "react-server": "./dist/component-blocks/primitives/blank-for-react-server.js",
+      "default": "./dist/component-blocks/primitives/index.js"
     },
-    "#markdoc": "./src/markdoc.js",
-    "#base64": "./src/base64.ts",
+    "#markdoc": "./dist/markdoc.js",
+    "#base64": "./dist/base64.js",
     "#react-compiler-runtime": {
-      "react-server": "./src/react-compiler-runtime-react-server.ts",
-      "default": "./src/react-compiler-runtime.ts"
+      "react-server": "./dist/react-compiler-runtime-react-server.js",
+      "default": "./dist/react-compiler-runtime.js"
     }
   }
 }
