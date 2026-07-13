@@ -42,6 +42,11 @@ function postCollection(label: string, previewUrl: string) {
         defaultValue: { kind: "today" },
         validation: { isRequired: true },
       }),
+      updated: fields.date({
+        label: "Ngày cập nhật",
+        description:
+          "Để trống nếu chưa sửa lại. Khi có, Google hiểu nội dung được làm mới (dateModified).",
+      }),
       publish: fields.checkbox({
         label: "Xuất bản",
         defaultValue: false,
@@ -156,6 +161,11 @@ export default config({
               label: "Trạng thái nhận dự án",
             }),
             favicon: fields.image({ label: "Favicon" }),
+            logo: fields.image({
+              label: "Logo (kết quả tìm kiếm)",
+              description:
+                "Ảnh PNG/JPG, tối thiểu 112×112px. Google dùng cho rich results; để trống sẽ tạm dùng favicon.",
+            }),
           },
           { label: "Thương hiệu" },
         ),

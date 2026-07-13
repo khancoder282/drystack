@@ -4,6 +4,7 @@ import Header from "../../components/Header.astro";
 import Footer from "../../components/Footer.astro";
 import Icon from "../../components/Icon.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Breadcrumb from "../../components/Breadcrumb.astro";
 import { getServices } from "../../data/services";
 import { getHomepage } from "../../data/site";
 import { parseHeadingLine } from "../../lib/heading";
@@ -24,7 +25,7 @@ if (!service) {
 	return Astro.redirect("/dich-vu");
 }
 
-const { brand } = await getHomepage();
+const { brand } = (await getHomepage()) as any;
 const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
 	brand.name,
 );
@@ -38,15 +39,11 @@ const serviceSchema = {
 	provider: { "@type": "Organization", name: siteName },
 };
 
-const breadcrumbSchema = {
-	"@context": "https://schema.org",
-	"@type": "BreadcrumbList",
-	itemListElement: [
-		{ "@type": "ListItem", position: 1, name: "Trang chủ", item: new URL("/", Astro.site).toString() },
-		{ "@type": "ListItem", position: 2, name: "Dịch vụ", item: new URL("/dich-vu", Astro.site).toString() },
-		{ "@type": "ListItem", position: 3, name: service.title, item: new URL(`/dich-vu/${service.slug}`, Astro.site).toString() },
-	],
-};
+const breadcrumbItems = [
+	{ name: "Trang chủ", href: "/" },
+	{ name: "Dịch vụ", href: "/dich-vu" },
+	{ name: service.title, href: `/dich-vu/${service.slug}` },
+];
 ---
 
 <Main
@@ -55,7 +52,7 @@ const breadcrumbSchema = {
 	keywords={service.keywords}
 	image={service.ogImage || undefined}
 >
-	<JsonLd schema={[serviceSchema, breadcrumbSchema]} />
+	<JsonLd schema={serviceSchema} />
 	<Header />
 
 	<section class="service-hero section--dark" id="top">
@@ -64,6 +61,7 @@ const breadcrumbSchema = {
 		</div>
 		<div class="container service-hero__inner">
 			<a href="/dich-vu" class="back-link reveal"><Icon name="arrow-left" size={16} /> Tất cả dịch vụ</a>
+			<Breadcrumb items={breadcrumbItems} />
 			<p class="eyebrow reveal">Dịch vụ</p>
 			<h1 class="section-title reveal">{service.title}</h1>
 			<p class="service-hero__price reveal">{service.price}</p>

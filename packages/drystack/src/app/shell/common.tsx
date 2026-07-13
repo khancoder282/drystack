@@ -22,7 +22,7 @@ export function useBrand() {
   return { brandMark };
 }
 
-function DrystackLogo({full = true}: {full: boolean}) {
+function DrystackLogo({full = true}: {full?: boolean}) {
   const size = 32;
   const { neutral } = tokenSchema.color.foreground;
   const accent = "var(--kui-color-background-accent-emphasis)";

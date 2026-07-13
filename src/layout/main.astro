@@ -42,6 +42,9 @@ const { before: brandName, emphasis: brandHighlight } = parseHeadingLine(
 );
 const siteName = `${brandName}${brandHighlight}`;
 const faviconUrl = brand.favicon || "/favicon.svg";
+// Logo cho rich results nên là ảnh raster (PNG/JPG); nếu chưa upload thì
+// tạm dùng favicon để schema không thiếu trường logo.
+const logoUrl = brand.logo || faviconUrl;
 
 // sameAs = các hồ sơ mạng xã hội chính thức. Giúp Google liên kết website
 // với thực thể thương hiệu trong Knowledge Graph (Facebook, Zalo, TikTok...).
@@ -54,7 +57,7 @@ const organizationSchema = {
   "@type": "Organization",
   name: siteName,
   url: Astro.site,
-  logo: new URL(faviconUrl, Astro.site).toString(),
+  logo: new URL(logoUrl, Astro.site).toString(),
   telephone: contact.phoneDisplay,
   email: contact.email,
   areaServed: contact.region,
