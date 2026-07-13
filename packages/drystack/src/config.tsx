@@ -58,11 +58,12 @@ type BrandMark = (props: {
 export const NAVIGATION_DIVIDER_KEY = '---';
 // Reserved singleton key `config()` always injects for the redirect-on-
 // rename feature (see the definition below and `config()`'s implementation).
-// It's never part of a site's own `Collections`/`Singletons` generics — since
-// it's injected after the fact, a site can't reference it type-safely
-// through those generics, so the key is added to the navigation union
-// directly here instead, letting a site list it in `ui.navigation` if it
-// wants the redirect table visible in the sidebar.
+// It's never part of a site's own `Collections`/`Singletons` generics, and a
+// site can't list it in `ui.navigation` either — it always renders on its
+// own, in a fixed "System" nav section (see useNavItems.tsx), independent of
+// the site's collections/singletons grouping. That section's label isn't
+// configurable, so the key is deliberately left out of the `Navigation`
+// union below.
 export const REDIRECTS_SINGLETON_KEY = '__redirects';
 type UserInterface<Collections, Singletons> = {
   brand?: {
@@ -73,7 +74,6 @@ type UserInterface<Collections, Singletons> = {
     | (keyof Collections & string)
     | (keyof Singletons & string)
     | typeof NAVIGATION_DIVIDER_KEY
-    | typeof REDIRECTS_SINGLETON_KEY
   >;
 };
 

@@ -1,6 +1,10 @@
 import { useLocalizedStringFormatter } from '@react-aria/i18n';
 
-import { Config, NAVIGATION_DIVIDER_KEY } from '../config';
+import {
+  Config,
+  NAVIGATION_DIVIDER_KEY,
+  REDIRECTS_SINGLETON_KEY,
+} from '../config';
 
 import l10nMessages from './l10n';
 import { useAppState, useConfig } from './shell/context';
@@ -37,7 +41,12 @@ export function useNavItems(): ItemOrGroup[] {
   let changeMap = useChanged();
 
   const collectionKeys = Object.keys(config.collections || {});
-  const singletonKeys = Object.keys(config.singletons || {});
+  // the redirects singleton is reserved/system-owned — it never joins the
+  // site's own collections/singletons grouping (default or custom), see the
+  // comment on REDIRECTS_SINGLETON_KEY in config.tsx
+  const singletonKeys = Object.keys(config.singletons || {}).filter(
+    key => key !== REDIRECTS_SINGLETON_KEY
+  );
   const items = config.ui?.navigation || {
     ...(!!collectionKeys.length && {
       [stringFormatter.format('collections')]: collectionKeys,
@@ -48,14 +57,21 @@ export function useNavItems(): ItemOrGroup[] {
   };
   const options = { basePath, changeMap, config };
 
-  if (Array.isArray(items)) {
-    return items.map(key => populateItemData(key, options));
+  const itemOrGroups: ItemOrGroup[] = Array.isArray(items)
+    ? items.map(key => populateItemData(key, options))
+    : Object.entries(items).map(([section, keys]) => ({
+        title: section,
+        children: keys.map(key => populateItemData(key, options)),
+      }));
+
+  if (config.singletons && REDIRECTS_SINGLETON_KEY in config.singletons) {
+    itemOrGroups.push({
+      title: stringFormatter.format('system'),
+      children: [populateItemData(REDIRECTS_SINGLETON_KEY, options)],
+    });
   }
 
-  return Object.entries(items).map(([section, keys]) => ({
-    title: section,
-    children: keys.map(key => populateItemData(key, options)),
-  }));
+  return itemOrGroups;
 }
 
 function populateItemData(

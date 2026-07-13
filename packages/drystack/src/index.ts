@@ -1,9 +1,4 @@
-export {
-  config,
-  collection,
-  singleton,
-  REDIRECTS_SINGLETON_KEY,
-} from './config';
+export { config, collection, singleton } from './config';
 export * from './form/api';
 export {
   BlockWrapper,

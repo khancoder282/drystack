@@ -28,6 +28,7 @@ const strings = {
     "theDefaultBranchInYourRepository": `The default branch in your repository. Choose this to start something new that's not dependent on your current branch.`,
     "viewPullRequests": `View pull requests`,
     "singletons": `Singletons`,
+    "system": `System`,
   },
   "vi-VN": {
     "basedOn": `Dựa trên`,
@@ -55,6 +56,7 @@ const strings = {
     "search": `Tìm kiếm`,
     "theCurrentlyCheckedOutBranch": `Nhánh đang được checkout hiện tại. Hãy chọn nhánh này nếu bạn cần tiếp tục công việc từ nhánh hiện tại.`,
     "singletons": `Mục đơn`,
+    "system": `Hệ thống`,
     "theDefaultBranchInYourRepository": `Nhánh mặc định trong kho lưu trữ của bạn. Hãy chọn nhánh này để bắt đầu công việc mới không phụ thuộc vào nhánh hiện tại.`,
     "newBranch": `Nhánh mới…`,
     "viewPullRequests": `Xem pull request`,

@@ -1,10 +1,4 @@
-import {
-  config,
-  fields,
-  collection,
-  singleton,
-  REDIRECTS_SINGLETON_KEY,
-} from "@drystack/core";
+import { config, fields, collection, singleton } from "@drystack/core";
 
 const techIconOptions = [
   { label: "Search", value: "search" },
