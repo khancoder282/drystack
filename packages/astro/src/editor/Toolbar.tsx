@@ -246,20 +246,11 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
         <>
           <Button
             prominence="high"
-            aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
+            aria-label="Open deploy menu"
             onPress={toggleDeploy}
-            UNSAFE_className="dry-fab"
+            UNSAFE_className={`dry-fab${deployOpen ? ' is-collapsed' : ''}`}
           >
-            <span
-              className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
-            >
-              <Icon src={rocketIcon} />
-            </span>
-            <span
-              className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
-            >
-              <Icon src={xIcon} />
-            </span>
+            <Icon src={rocketIcon} />
           </Button>
 
           <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
@@ -279,21 +270,30 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
                 }}
               >
                 <ActionButton
+                  aria-label="Close deploy menu"
+                  onPress={toggleDeploy}
+                  UNSAFE_className="dry-iconbtn"
+                >
+                  <Icon src={xIcon} />
+                </ActionButton>
+                <div className="dry-divider" aria-hidden="true" />
+
+                <ActionButton
                   isDisabled={!brand}
                   flex
                   minWidth={0}
-                  aria-label="Copy tên brand"
+                  aria-label="Copy brand name"
                   UNSAFE_className="dry-brandchip"
                   onPress={() => {
                     if (!brand) return;
                     // Display drops the date; copying keeps the full label.
                     navigator.clipboard.writeText(brand.label);
-                    toastQueue.positive('Đã copy tên brand', { timeout: 2000 });
+                    toastQueue.positive('Brand name copied', { timeout: 2000 });
                   }}
                 >
                   <Icon src={gitBranchIcon} />
                   <Text truncate flex minWidth={0} title={brandLabel}>
-                    {brand ? brandLabel : 'Chưa có brand'}
+                    {brand ? brandLabel : 'No brand yet'}
                   </Text>
                 </ActionButton>
 
@@ -317,16 +317,11 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
 
       <Button
         prominence="high"
-        aria-label={editing ? 'Exit edit mode' : 'Edit page'}
+        aria-label="Edit page"
         onPress={toggleEdit}
-        UNSAFE_className="dry-fab"
+        UNSAFE_className={`dry-fab${editing ? ' is-collapsed' : ''}`}
       >
-        <span className={`dry-fab-icon dry-fab-icon--edit${editing ? ' is-hidden' : ''}`}>
-          <Icon src={editIcon} />
-        </span>
-        <span className={`dry-fab-icon dry-fab-icon--x${editing ? '' : ' is-hidden'}`}>
-          <Icon src={xIcon} />
-        </span>
+        <Icon src={editIcon} />
       </Button>
 
       <div className={`dry-menu${editing ? ' is-open' : ''}`}>
@@ -342,6 +337,15 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
             elementType="section"
             UNSAFE_style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.18)', overflow: 'hidden' }}
           >
+            <ActionButton
+              aria-label="Exit edit mode"
+              onPress={toggleEdit}
+              UNSAFE_className="dry-iconbtn"
+            >
+              <Icon src={xIcon} />
+            </ActionButton>
+            <div className="dry-divider" aria-hidden="true" />
+
             <div
               className="dry-ref"
               ref={refWrapRef}

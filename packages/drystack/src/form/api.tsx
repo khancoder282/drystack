@@ -184,6 +184,10 @@ export type AssetsFormField<
     value: ParsedValue,
     extra: {
       slug: string | undefined;
+      // repo-relative dir of the entry (e.g. `blog/my-post`), used to build
+      // absolute, deploy-safe URLs for co-located assets. Undefined outside a
+      // concrete entry (e.g. change detection).
+      basePath?: string;
     }
   ): {
     value: FormFieldStoredValue;
@@ -230,6 +234,10 @@ export type ContentFormField<
     value: ParsedValue,
     extra: {
       slug: string | undefined;
+      // repo-relative dir of the entry (e.g. `blog/my-post`), used to build
+      // absolute, deploy-safe URLs for co-located assets. Undefined outside a
+      // concrete entry (e.g. change detection).
+      basePath?: string;
     }
   ): {
     value: FormFieldStoredValue;

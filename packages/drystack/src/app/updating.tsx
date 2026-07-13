@@ -77,7 +77,8 @@ export function serializeEntryToFiles(args: {
     fields.object(args.schema),
     args.slug?.field,
     args.slug?.value,
-    true
+    true,
+    args.basePath
   );
   let dataContent = textEncoder.encode(dump(stateWithExtraFilesRemoved));
 

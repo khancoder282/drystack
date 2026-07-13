@@ -223,7 +223,8 @@ async function applyCachedSource(pendingKeys: Set<string>): Promise<void> {
 
 // Applies edits saved in IndexedDB on top of the server-rendered DOM — runs
 // on every page load (even before Edit mode is turned on) so an unsaved edit
-// survives a reload, per plan.md's "chưa lưu thì reload phải lấy IndexDB".
+// survives a reload (per plan.md: an unsaved edit must be restored from
+// IndexedDB after a reload).
 export async function applyPendingEdits(): Promise<number> {
   const edits = await getAllEdits();
   const pendingKeys = new Set(edits.map(edit => edit.key));

@@ -155,7 +155,7 @@ export function useDeploy() {
     if (currentBranch !== brand.ref) {
       // shouldn't normally happen (DeployButton only renders once brand is
       // resolved), but guards against deploying the wrong thing
-      setState({ kind: 'idle', error: 'Brand chưa sẵn sàng, thử lại sau.' });
+      setState({ kind: 'idle', error: 'Brand is not ready yet, try again later.' });
       return;
     }
 
@@ -167,13 +167,13 @@ export function useDeploy() {
         fetchFreshRef(githubConfig, basePath, repoInfo!.owner, repoInfo!.name, brand!.ref),
       ]);
       if (!mainRef) {
-        setState({ kind: 'idle', error: 'Không tìm thấy nhánh mặc định.' });
+        setState({ kind: 'idle', error: 'Default branch not found.' });
         return 'done';
       }
       if (!brandRef) {
         setState({
           kind: 'idle',
-          error: 'Brand hiện tại không còn tồn tại — vui lòng tải lại trang.',
+          error: 'The current brand no longer exists — please reload the page.',
         });
         return 'done';
       }
@@ -280,7 +280,7 @@ export function useDeploy() {
       }
 
       if (additions.length === 0 && deletions.length === 0) {
-        setState({ kind: 'idle', error: 'Không có thay đổi nào để deploy.' });
+        setState({ kind: 'idle', error: 'No changes to deploy.' });
         return 'done';
       }
 
@@ -314,7 +314,7 @@ export function useDeploy() {
       if (result.error || !target || !('tree' in target)) {
         setState({
           kind: 'idle',
-          error: result.error?.message ?? 'Deploy thất bại.',
+          error: result.error?.message ?? 'Deploy failed.',
         });
         return 'done';
       }
@@ -347,12 +347,12 @@ export function useDeploy() {
       }
       setState({
         kind: 'idle',
-        error: 'Nhánh mặc định thay đổi liên tục — vui lòng thử lại.',
+        error: 'The default branch keeps changing — please try again.',
       });
     } catch (err) {
       setState({
         kind: 'idle',
-        error: err instanceof Error ? err.message : 'Deploy thất bại.',
+        error: err instanceof Error ? err.message : 'Deploy failed.',
       });
     }
   }, [

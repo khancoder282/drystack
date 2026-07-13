@@ -73,8 +73,8 @@ export function content({
     validate(value) {
       return value;
     },
-    serialize(value) {
-      const out = serializeFromEditorStateHTML(value);
+    serialize(value, { basePath }) {
+      const out = serializeFromEditorStateHTML(value, basePath);
       const summary: ContentSummary = countWordsAndChars(
         stripHtmlForPreview(out.value)
       );
