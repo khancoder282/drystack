@@ -87,7 +87,7 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
   const [spots, setSpots] = useState<Spot[]>([]);
 
   // Deploy menu — a second pill (brand name + Deploy), github-only, mutually
-  // exclusive with the edit/function menu below.
+  // exclusive with the edit menu it sits beside.
   const isGithub = config.storage.kind === 'github';
   const [deployOpen, setDeployOpen] = useState(false);
   const {
@@ -241,69 +241,6 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
 
   return (
     <div className="dry-bar">
-      {/* Deploy menu — same unified pill as the edit menu below: collapsed it's
-          just the rocket FAB; opening it expands the brand chip + deploy action
-          out to the right and morphs the rocket into an ✕. */}
-      {isGithub && (
-        <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
-          <div className="dry-menu-pill">
-            <Button
-              prominence="high"
-              aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
-              onPress={toggleDeploy}
-              UNSAFE_className="dry-fab"
-            >
-              <span
-                className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
-              >
-                <Icon src={rocketIcon} />
-              </span>
-              <span
-                className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
-              >
-                <Icon src={xIcon} />
-              </span>
-            </Button>
-
-            <div className="dry-menu-actions">
-              <div className="dry-menu-actions-inner">
-                <ActionButton
-                  isDisabled={!brand}
-                  flex
-                  minWidth={0}
-                  aria-label="Copy tên brand"
-                  UNSAFE_className="dry-brandchip"
-                  onPress={() => {
-                    if (!brand) return;
-                    // Display drops the date; copying keeps the full label.
-                    navigator.clipboard.writeText(brand.label);
-                    toastQueue.positive('Đã copy tên brand', { timeout: 2000 });
-                  }}
-                >
-                  <Icon src={gitBranchIcon} />
-                  <Text truncate flex minWidth={0} title={brandLabel}>
-                    {brand ? brandLabel : 'Chưa có brand'}
-                  </Text>
-                </ActionButton>
-
-                <TooltipTrigger>
-                  <Button
-                    aria-label="Deploy"
-                    prominence="high"
-                    onPress={deploy}
-                    isDisabled={deployBusy || !brand}
-                    UNSAFE_className="dry-iconbtn"
-                  >
-                    <Icon src={rocketIcon} />
-                  </Button>
-                  <Tooltip>{deployLabel}</Tooltip>
-                </TooltipTrigger>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Unified edit menu — a single pill that's always on screen. Collapsed
           it's just the edit FAB; enabling edit expands the action buttons out
           to the right (width collapse) and morphs the pencil into an ✕ that
@@ -394,6 +331,69 @@ export function Toolbar({ config }: { config: Config<any, any> }) {
           </div>
         </div>
       </div>
+
+      {/* Deploy menu — same unified pill as the edit menu above, sitting to its
+          right: collapsed it's just the rocket FAB; opening it expands the brand
+          chip + deploy action out to the right and morphs the rocket into an ✕. */}
+      {isGithub && (
+        <div className={`dry-menu${deployOpen ? ' is-open' : ''}`}>
+          <div className="dry-menu-pill">
+            <Button
+              prominence="high"
+              aria-label={deployOpen ? 'Đóng menu deploy' : 'Mở menu deploy'}
+              onPress={toggleDeploy}
+              UNSAFE_className="dry-fab"
+            >
+              <span
+                className={`dry-fab-icon dry-fab-icon--edit${deployOpen ? ' is-hidden' : ''}`}
+              >
+                <Icon src={rocketIcon} />
+              </span>
+              <span
+                className={`dry-fab-icon dry-fab-icon--x${deployOpen ? '' : ' is-hidden'}`}
+              >
+                <Icon src={xIcon} />
+              </span>
+            </Button>
+
+            <div className="dry-menu-actions">
+              <div className="dry-menu-actions-inner">
+                <ActionButton
+                  isDisabled={!brand}
+                  flex
+                  minWidth={0}
+                  aria-label="Copy tên brand"
+                  UNSAFE_className="dry-brandchip"
+                  onPress={() => {
+                    if (!brand) return;
+                    // Display drops the date; copying keeps the full label.
+                    navigator.clipboard.writeText(brand.label);
+                    toastQueue.positive('Đã copy tên brand', { timeout: 2000 });
+                  }}
+                >
+                  <Icon src={gitBranchIcon} />
+                  <Text truncate flex minWidth={0} title={brandLabel}>
+                    {brand ? brandLabel : 'Chưa có brand'}
+                  </Text>
+                </ActionButton>
+
+                <TooltipTrigger>
+                  <Button
+                    aria-label="Deploy"
+                    prominence="high"
+                    onPress={deploy}
+                    isDisabled={deployBusy || !brand}
+                    UNSAFE_className="dry-iconbtn"
+                  >
+                    <Icon src={rocketIcon} />
+                  </Button>
+                  <Tooltip>{deployLabel}</Tooltip>
+                </TooltipTrigger>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {refOpen &&
         singletonList.length > 0 &&

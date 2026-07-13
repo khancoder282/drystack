@@ -89,10 +89,15 @@ body > .kui-scheme--auto {
   flex: none;
 }
 
-/* Brand-name chip in the deploy pill — reads as a button but bounded so a long
-   brand label truncates instead of stretching the bar off-screen. */
+/* Brand-name chip in the deploy pill — same 40px height and fully-rounded ends
+   as the icon buttons it sits next to, so the row reads as one set of controls.
+   Width is bounded so a long brand label truncates instead of stretching the
+   bar off-screen. */
 .dry-brandchip {
+  height: 40px !important;
   max-width: 220px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
 }
 
 .dry-fab-icon {
